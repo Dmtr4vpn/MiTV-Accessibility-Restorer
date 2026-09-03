@@ -1,0 +1,265 @@
+MiTV Accessibility Restorer 4.0.0 - verification
+================================================
+
+Статус: production APK собран официальным Android toolchain, подписан прежним
+ключом и статически проверен. Объединённый релиз 4.0.0 не запускался Codex на
+физическом Xiaomi Mi TV S75; фактические Bound/Crashed, VPN, native torrserver,
+Home remap и визуальный путь должны быть проверены пользователем.
+
+
+Идентификация
+-------------
+
+Файл: MiTVAccessibilityRestorer-4.0.0.apk
+Package: com.mitv.accessibilityrestorer
+versionName: 4.0.0
+versionCode: 9
+minSdkVersion: 21
+targetSdkVersion: 28
+compileSdkVersion: 35
+Размер APK: 45537 bytes
+SHA-256 APK: F7AA643DEA0C957C818FAC59194B154F0CA564EB8868CF09035497A2425CAE74
+
+SHA-256 signing certificate:
+646A700698CE0790D6B7F0396D8192E6A093544934E2F7F065F8726E0D3638F5
+
+Сертификат совпадает с предыдущими подписанными сборками Restorer;
+`adb install -r` поддерживается.
+
+
+Toolchain
+---------
+
+- OpenJDK 17.0.20.1
+- Android Platform 35
+- Android Build Tools 35.0.0
+- aapt2 -> javac -> официальный D8 -> zipalign -> apksigner
+- apksigner verify --verbose --print-certs: SUCCESS
+- APK Signature Scheme v1/v2/v3: verified
+- zipalign -c -v 4: SUCCESS
+- APK ZIP entries: manifest, resources, classes.dex, signature metadata
+
+
+Manifest
+--------
+
+Binary manifest содержит ровно три permissions:
+
+- android.permission.RECEIVE_BOOT_COMPLETED
+- android.permission.WRITE_SECURE_SETTINGS
+- android.permission.ACCESS_NETWORK_STATE
+
+INTERNET, WRITE_SETTINGS, WAKE_LOCK и AUTO_START отсутствуют.
+
+Components:
+
+- MainActivity: exported=true
+- ControlActivity: exported=true
+- RecoveryCoverActivity: exported=false, excludeFromRecents=true
+- BootReceiver: exported=true, directBootAware=true
+- RestoreReceiver: exported=false, directBootAware=true
+
+Manifest не содержит Service/ForegroundService. В коде отсутствуют WorkManager,
+JobScheduler, setRepeating и setInexactRepeating.
+
+
+Cold boot regression protection
+-------------------------------
+
+Следующие исходники byte-for-byte совпадают с 4.0.0-test4:
+
+- BootReceiver.java
+- RestoreReceiver.java
+- BootSessionState.java
+- AccessibilityRestorer.java
+- DirectBootContext.java
+- RecoveryTargets.java
+- TargetApps.java
+- TargetUnstopper.java
+- VendorStartApp.java
+- RecoveryCoverActivity.java
+- RecoveryState.java
+- MainActivity.java
+
+Весь блок `RecoveryEngine.runColdBoot()` сравнен отдельно и совпадает
+посимвольно (3261 символ). Сохранены Direct Boot, BOOT_COUNT/session protection,
+EARLY_BOOT_SETTLE_MS=2500, LOCKED_BOOT_COMPLETED, BOOT_COMPLETED, одноразовый
+fallback alarm 10000 ms, lightweight Accessibility recovery и final Projectivy.
+
+TorrServeTarget и V2RayVpnAssist вызываются только из `runStrSession()` и не
+присутствуют в BootReceiver, RestoreReceiver или AccessibilityRestorer.
+
+
+STR Accessibility plan
+----------------------
+
+Сохранены interactive settle 500 ms и обязательный порядок:
+
+- ALL INITIAL: 2500 ms
+- BASE: 1500 ms
+- MAPPER: 2500 ms
+- ALL FINAL: 1500 ms
+- final Projectivy launch
+
+Normal profile: NORMAL_9S. При измеримой ошибке допускается одна conservative
+attempt после паузы 1000 ms с timings 4000/3000/3000/3000. Максимум 2 attempts.
+
+BASE удаляет только три managed target и сохраняет остальные raw tokens и их
+порядок:
+
+- flar2.homebutton/a.i
+- com.spocky.projengmenu/com.spocky.projengmenu.services.ProjectivyAccessibilityService
+- ru.yourok.torrserve/ru.yourok.torrserve.server.local.services.GlobalTorrService
+
+ALL INITIAL содержит только Mapper+Projectivy. TorrServe добавляется только в
+ALL FINAL и только если пакет и GlobalTorrService найдены. Отсутствие TorrServe
+не влияет на основной execution result.
+
+
+TorrServe
+---------
+
+Добавлен отдельный STR-only `TorrServeTarget`:
+
+- проверяет `ru.yourok.torrserve`;
+- проверяет точный GlobalTorrService и BIND_ACCESSIBILITY_SERVICE;
+- не запускает Activity;
+- не вызывает BCReceiver;
+- не выполняет отдельный unstop;
+- логирует packageInstalled, accessibilityTargetAvailable,
+  accessibilitySkipped, includedInAllInitial=false, includedInAllFinal и
+  expectedAutoStartViaAccessibility.
+
+APK не утверждает, что TorrServe Bound; это проверяется через dumpsys на ТВ.
+
+
+v2RayTun VPN assist
+-------------------
+
+Добавлен STR-only `V2RayVpnAssist`, который запускается отдельным потоком
+параллельно Accessibility recovery. RecoveryEngine не ждёт helper перед final
+Projectivy, а VPN status является advisory и не входит в execution result.
+
+Логика решения:
+
+1. Package missing -> SKIPPED_PACKAGE_MISSING.
+2. Любой TRANSPORT_VPN active -> ALREADY_ACTIVE, trigger не отправляется.
+3. stopped=true и VPN отсутствует -> повторная VPN-проверка и один trigger.
+4. stopped=false и VPN отсутствует -> grace 2000 ms, повторная проверка VPN и
+   FLAG_STOPPED, затем ещё одна VPN-проверка непосредственно перед trigger.
+5. После trigger: poll 250 ms, timeout 5000 ms, CONNECTED или TIMEOUT.
+
+Action/component:
+
+- com.v2raytun.android.action.widget.click
+- com.v2raytun.android/.receiver.WidgetProvider1x1
+- Intent.FLAG_INCLUDE_STOPPED_PACKAGES
+
+DEX-блок V2RayVpnAssist содержит ровно одну ссылку sendBroadcast. UI v2RayTun не
+запускается, v2RayTun не добавляется в enabled_accessibility_services.
+
+
+Session semantics
+-----------------
+
+Сохранены:
+
+- execution=COMPLETED|PARTIAL|FAILED
+- settingsRecovery=true|false
+- targetUnstop=true|false
+- mapperUnstop=<mode>
+- projectivyUnstop=<mode>
+- torrServeIncluded=true|false
+- finalLaunch=true|false
+- bindingVerification=UNAVAILABLE_IN_APP
+
+Добавлены advisory-поля:
+
+- vpnAssist=<status>
+- vpnTriggerSent=true|false
+- vpnDetected=true|false
+- vpnElapsedMs=<value>
+
+Settings readback не трактуется как подтверждение Bound/Crashed.
+
+
+DEX
+---
+
+classes.dex извлечён из итогового APK.
+Размер classes.dex: 78648 bytes
+SHA-256 classes.dex:
+CA1647F506E7AE5FF6A0456E48D5B389389FD049DC456FE2F8CBC2C9CB608EDF
+
+Официальный dexdump:
+
+- checksum verification: SUCCESS
+- полная дизассембляция: exit code 0
+- 52 class definitions
+- 12167 строк дизассемблирования
+
+В DEX подтверждены основные receiver/activity/recovery классы, TorrServeTarget,
+V2RayVpnAssist, exact target/action/component strings, TRANSPORT_VPN marker,
+FLAG_INCLUDE_STOPPED_PACKAGES, FLAG_STOPPED и все timing constants.
+
+Отсутствуют BCReceiver, WorkManager, JobScheduler, repeating alarms, Shizuku,
+dumpsys invocation, WindowChangeDetectingService и test branding.
+
+
+Изменённые/добавленные файлы
+---------------------------
+
+Изменены относительно 4.0.0-test4:
+
+- AndroidManifest.xml
+- strings.xml
+- AccessibilityPlan.java
+- RecoveryEngine.java
+- ControlActivity.java
+- build.ps1
+- README.md
+- .gitignore
+
+Добавлены:
+
+- TorrServeTarget.java
+- V2RayVpnAssist.java
+- INSTALL-RU.txt
+- VERIFICATION.txt
+- SHA256SUMS.txt
+- RELEASE-NOTES-RU.md
+
+
+Source ZIP
+----------
+
+Файл: MiTVAccessibilityRestorer-4.0.0-sources.zip
+Размер: 48819 bytes
+SHA-256: 3F02E368AC5ECBA3CAD95884CAC4F14D7B1D9F1CFAAE4A56E0B62F337128FD74
+
+ZIP содержит app/src, build.ps1, README.md, .gitignore, INSTALL-RU.txt и
+RELEASE-NOTES-RU.md. Проверено 37 entries/27 files. APK, keystore, password,
+реальные signing aliases, SDK, JDK, `.build`, `dist`, downloads, Git metadata,
+GitHub auth data и tokens отсутствуют.
+
+
+Команда сборки
+--------------
+
+$env:MITV_RESTORER_KEYSTORE_PASSWORD = '<existing-keystore-password>'
+$env:MITV_RESTORER_KEY_ALIAS = '<existing-key-alias>'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 `
+  -JavaHome C:\path\to\jdk17 `
+  -AndroidSdkRoot C:\path\to\android-sdk `
+  -Keystore C:\path\to\existing-restorer-keystore.jks
+
+
+Известные ограничения
+---------------------
+
+- Новый объединённый релиз не проверялся Codex на физическом телевизоре.
+- Реальный Bound/Binding/Crashed определяется только dumpsys accessibility.
+- Наличие native torrserver и VPN/tun0 определяется системными командами.
+- Любой уже активный VPN transport безопасно подавляет v2RayTun toggle.
+- Target receiver/service components зависят от установленных версий приложений.
+- Emergency visible fallback может показать промежуточный кадр.
