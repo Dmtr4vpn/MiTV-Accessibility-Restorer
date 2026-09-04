@@ -1,208 +1,137 @@
 MiTV Accessibility Restorer 4.0.0
-================================
+=================================
 
-Целевое устройство: Xiaomi Mi TV S75 / MiTV-MFTR0
-Прошивка: MiTV OS 2.8.1712 / Android 11
+Версия: 4.0.0 (versionCode 10)
 Package: com.mitv.accessibilityrestorer
-Версия: 4.0.0 (versionCode 9)
-SHA-256 APK: F7AA643DEA0C957C818FAC59194B154F0CA564EB8868CF09035497A2425CAE74
 
+СТАНДАРТНАЯ УСТАНОВКА
+---------------------
 
-1. Установка или обновление
+1. Включите ADB debugging в настройках телевизора.
+2. Подключите Xiaomi Mi TV S75 к ПК и подтвердите запрос отладки на ТВ.
+3. Установите Android Platform Tools так, чтобы adb.exe был доступен в PATH.
+4. Убедитесь, что INSTALL.cmd и MiTVAccessibilityRestorer-4.0.0.apk лежат рядом.
+5. Запустите INSTALL.cmd.
+6. На телевизоре откроется экран «Первичная настройка».
+7. Проверьте компоненты и нажмите «Завершить настройку».
+
+INSTALL.cmd самостоятельно:
+
+- проверяет adb;
+- запускает ADB server;
+- требует ровно одно авторизованное устройство;
+- выполняет adb install -r;
+- выдаёт WRITE_SECURE_SETTINGS;
+- проверяет readback granted=true;
+- открывает com.mitv.accessibilityrestorer/.ControlActivity.
+
+Скрипт НЕ выполняет uninstall автоматически и НЕ записывает start_3rd_app.
+
+Если установка завершилась с INSTALL_FAILED_UPDATE_INCOMPATIBLE, установленная
+версия подписана другим ключом. Скрипт покажет, но не выполнит команду:
+
+adb uninstall com.mitv.accessibilityrestorer
+
+Перед чистой установкой учитывайте: удаление Restorer не затрагивает настройки
+Projectivy Launcher, Button Mapper, TorrServe или v2RayTun.
+
+РУЧНАЯ УСТАНОВКА (ADVANCED)
 ---------------------------
 
 adb install -r MiTVAccessibilityRestorer-4.0.0.apk
 adb shell pm grant com.mitv.accessibilityrestorer android.permission.WRITE_SECURE_SETTINGS
-adb shell settings put system start_3rd_app com.mitv.accessibilityrestorer
-adb shell settings get system start_3rd_app
-
-Ожидаемый readback:
-
-com.mitv.accessibilityrestorer
-
-После установки один раз явно запустить приложение:
-
-adb shell am start -n com.mitv.accessibilityrestorer/.MainActivity
-
-Проверить пакет и разрешение:
-
-adb shell dumpsys package com.mitv.accessibilityrestorer | grep -iE 'versionName|versionCode|WRITE_SECURE_SETTINGS|ACCESS_NETWORK_STATE'
-
-APK подписан прежним ключом. Если ADB сообщает
-INSTALL_FAILED_UPDATE_INCOMPATIBLE, установленная копия подписана другим ключом.
-Только тогда выполнить чистую установку:
-
-adb uninstall com.mitv.accessibilityrestorer
-adb install MiTVAccessibilityRestorer-4.0.0.apk
-adb shell pm grant com.mitv.accessibilityrestorer android.permission.WRITE_SECURE_SETTINGS
-adb shell settings put system start_3rd_app com.mitv.accessibilityrestorer
-adb shell am start -n com.mitv.accessibilityrestorer/.MainActivity
-
-Удаление Restorer не удаляет данные и настройки Projectivy Launcher, Button
-Mapper, TorrServe или v2RayTun.
-
-
-2. Ручная диагностика
----------------------
-
 adb shell am start -n com.mitv.accessibilityrestorer/.ControlActivity
 
-Кнопка «Восстановить сейчас» запускает STR recovery немедленно. UI показывает
-основные Accessibility services, наличие TorrServe/v2RayTun, состояние VPN и
-результат последнего выполнения.
+В стандартном и ручном сценарии команда settings put system start_3rd_app не
+требуется и не выполняется.
 
+FIRST RUN UI
+------------
 
-3. Проверка Smooth STR
-----------------------
+Экран показывает:
 
-1. Открыть Projectivy.
-2. Выполнить: adb logcat -c
-3. Нажать Power/Sleep.
-4. Подождать 30 секунд.
-5. Разбудить телевизор и ничего вручную не запускать.
+- Button Mapper и его AccessibilityService как основной компонент;
+- Projectivy Launcher и его AccessibilityService как основной компонент;
+- TorrServe/GlobalTorrService как необязательную интеграцию;
+- v2RayTun как необязательную интеграцию;
+- фактическое состояние WRITE_SECURE_SETTINGS.
 
-Ожидаемый визуальный путь:
+Если разрешение отсутствует, повторно запустите INSTALL.cmd либо выполните:
 
-Wake -> полностью чёрный экран -> Projectivy
+adb shell pm grant com.mitv.accessibilityrestorer android.permission.WRITE_SECURE_SETTINGS
 
-Нормальная последовательность Accessibility:
+Затем нажмите «Проверить снова». Кнопка «Диагностика» показывает число включённых
+основных служб, VPN transport и результат последнего восстановления. Кнопка
+«Восстановить сейчас» немедленно запускает существующий ручной STR recovery.
 
-interactive settle 500 ms
-ALL INITIAL 2500 ms: Button Mapper + Projectivy
-BASE 1500 ms: без управляемых targets
-MAPPER 2500 ms: Button Mapper
-ALL FINAL 1500 ms: Button Mapper + Projectivy + TorrServe
-final Projectivy launch
+ПОДГОТОВКА CLEAN-INSTALL ТЕСТА БЕЗ start_3rd_app
+------------------------------------------------
 
-VPN assist выполняется параллельно и не должен увеличивать время показа чёрного
-cover. Ориентир Wake -> Projectivy: около 8,6-9 секунд.
+Vendor setting может пережить удаление APK. Перед тестом явно удалите его:
 
+adb shell settings delete system start_3rd_app
+adb shell settings get system start_3rd_app
 
-4. Функциональная проверка после STR
------------------------------------
+Ожидаемый ответ:
 
+null
+
+После этого:
+
+adb uninstall com.mitv.accessibilityrestorer
+
+Установите новую версию через INSTALL.cmd. Скрипт не создаст start_3rd_app снова.
+
+ПРОВЕРКА STR
+------------
+
+Выполните не менее трёх циклов:
+
+Sleep -> 30 секунд -> Wake
+
+Для v2RayTun выполните не менее пяти STR подряд. Ожидаемый обычный путь:
+
+stopped=true + VPN=false -> SEND_ONCE -> CONNECTED
+
+Допустимый путь при ошибке Xiaomi ConnectivityManager:
+
+SecurityException -> 3 retries -> UNKNOWN -> stopped readback=true
+-> SEND_ONCE_FALLBACK_STOPPED -> CONNECTED
+
+Недопустимо после исправления:
+
+stopped=true + VPN=UNKNOWN + vpnTriggerSent=false
+
+Проверьте:
+
+adb shell settings get system start_3rd_app
+adb shell settings get secure enabled_accessibility_services
+adb shell settings get secure accessibility_enabled
 adb shell dumpsys package flar2.homebutton | grep -i stopped
 adb shell dumpsys package com.spocky.projengmenu | grep -i stopped
 adb shell dumpsys package ru.yourok.torrserve | grep -i stopped
 adb shell dumpsys package com.v2raytun.android | grep -i stopped
-adb shell settings get secure enabled_accessibility_services
-adb shell settings get secure accessibility_enabled
 adb shell dumpsys accessibility
 adb shell dumpsys connectivity
-adb shell dumpsys window
 adb shell ps -A
 adb shell "logcat -d | grep -iE 'MiTVRestorer|accessibilityrestorer|AndroidRuntime'"
 
-Проверить:
-
-- Mapper stopped=false;
-- Projectivy stopped=false;
-- TorrServe stopped=false;
-- v2RayTun stopped=false;
-- Button Mapper, Projectivy и TorrServe находятся в Bound;
-- Binding={} и Crashed={};
-- процессы ru.yourok.torrserve и torrserver существуют;
-- connectivity содержит TRANSPORT_VPN/type VPN, интерфейс tun0 создан;
-- Projectivy foreground.
-
-Строка Restorer `execution=COMPLETED` подтверждает выполнение доступных APK
-операций, но не доказывает Bound/Crashed. Источник истины — `dumpsys
-accessibility`.
-
-
-5. Проверка Home
-----------------
-
-После успешного STR открыть TV Player или другое приложение и нажать физическую
-кнопку Home.
-
 Ожидается:
 
-TV Player -> Button Mapper -> Projectivy
+- start_3rd_app остаётся null;
+- Wake -> чёрный cover -> Projectivy примерно за 9 секунд;
+- Button Mapper, Projectivy и TorrServe имеют stopped=false и Bound;
+- Binding={} и Crashed={};
+- процессы TorrServe/torrserver запущены;
+- v2RayTun stopped=false, VPN transport/tun0 присутствует;
+- физическая кнопка Home открывает Projectivy без кадра Xiaomi launcher.
 
-В системном логе Projectivy должен запускаться от UID Button Mapper. Запуска
-`com.mitv.tvhome` и визуального кадра Xiaomi launcher быть не должно. Restorer
-не меняет default HOME; Xiaomi tvhome остаётся аварийным fallback.
+COLD BOOT
+---------
 
+Cold boot использует прежние Direct Boot, LOCKED_BOOT_COMPLETED, BOOT_COMPLETED,
+BOOT_COUNT, раннюю задержку 2500 ms и одноразовый fallback alarm 10000 ms.
+TorrServe, v2RayTun, setup UI и новые delays в cold-boot ветку не добавлены.
 
-6. Диагностика TorrServe
-------------------------
-
-В enabled_accessibility_services после STR ожидается:
-
-ru.yourok.torrserve/ru.yourok.torrserve.server.local.services.GlobalTorrService
-
-В логе Restorer ожидаются:
-
-TORRSERVE packageInstalled=true
-TORRSERVE accessibilityTargetAvailable=true
-TORRSERVE includedInAllInitial=false
-TORRSERVE includedInAllFinal=true
-TORRSERVE expectedAutoStartViaAccessibility=true
-
-Restorer не открывает TorrServe Activity и не вызывает BCReceiver. Если пакет
-отсутствует, ожидаются packageInstalled=false и accessibilitySkipped=true; это
-не должно мешать Button Mapper/Projectivy recovery.
-
-
-7. Диагностика v2RayTun
------------------------
-
-Если VPN уже активен, ожидается:
-
-V2RAY VPN trigger decision=VPN_ALREADY_ACTIVE
-vpnTriggerSent=false
-
-Если v2RayTun stopped и VPN отсутствует, ожидается один broadcast на:
-
-com.v2raytun.android/.receiver.WidgetProvider1x1
-
-После него ожидается vpnAssist=CONNECTED, vpnTriggerSent=true и
-vpnDetected=true. TIMEOUT является advisory и не блокирует final Projectivy.
-
-Если пакет уже running без VPN, helper ждёт 2000 ms, повторно проверяет VPN и
-FLAG_STOPPED и только затем при необходимости отправляет один trigger.
-
-
-8. Проверка cold boot
----------------------
-
-1. Выполнить: adb logcat -c
-2. Полностью выключить телевизор.
-3. Снять питание на 20-30 секунд.
-4. Включить телевизор и дождаться Projectivy.
-
-Проверить:
-
-adb shell settings get global boot_count
-adb shell settings get secure enabled_accessibility_services
-adb shell settings get secure accessibility_enabled
-adb shell dumpsys accessibility
-adb shell dumpsys window
-adb shell "logcat -d | grep -iE 'MiTVRestorer|accessibilityrestorer|AndroidRuntime'"
-
-Cold boot должен использовать прежний быстрый тракт: Direct Boot -> EARLY_BOOT
-2500 ms -> lightweight recovery -> Projectivy. TorrServe management, VPN assist,
-STR cover и STR phases из cold-boot branch не запускаются. Одноразовый alarm
-10000 ms остаётся fallback.
-
-
-9. Три последовательных STR
----------------------------
-
-Без ADB repair выполнить три цикла:
-
-Sleep -> 30 секунд -> Wake -> Home
-
-После каждого цикла проверить stopped, Bound/Binding/Crashed, TorrServe/torrserver,
-VPN, foreground и Home remap.
-
-
-10. Сохранение лога
--------------------
-
-adb shell "logcat -d | grep -iE 'MiTVRestorer|accessibilityrestorer|AndroidRuntime'" > mitv-restorer-4.0.0.log
-
-Объединённый APK 4.0.0 не запускался в среде сборки на физическом телевизоре.
-Smooth STR, TorrServe auto-start, v2RayTun VPN, cold boot и Home remap необходимо
-подтвердить указанными командами на Xiaomi Mi TV S75.
+ВАЖНО: новый APK versionCode 10 статически проверен, но физический cold boot и
+clean-install STR без start_3rd_app должны быть проверены пользователем на ТВ.

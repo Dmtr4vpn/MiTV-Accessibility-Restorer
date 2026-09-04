@@ -1,265 +1,334 @@
-MiTV Accessibility Restorer 4.0.0 - verification
-================================================
+MiTV Accessibility Restorer 4.0.0 - STATIC VERIFICATION
+=======================================================
 
-Статус: production APK собран официальным Android toolchain, подписан прежним
-ключом и статически проверен. Объединённый релиз 4.0.0 не запускался Codex на
-физическом Xiaomi Mi TV S75; фактические Bound/Crashed, VPN, native torrserver,
-Home remap и визуальный путь должны быть проверены пользователем.
+Дата локальной проверки: 2026-09-04
 
+ВАЖНО
+------
 
-Идентификация
--------------
+Новый APK versionCode 10 не проверялся Codex на физическом телевизоре.
+Ниже разделены выполненная статическая проверка и команды будущего теста на
+Xiaomi Mi TV S75 / MiTV-MFTR0, MiTV OS 2.8.1712, Android 11.
 
-Файл: MiTVAccessibilityRestorer-4.0.0.apk
-Package: com.mitv.accessibilityrestorer
+ИДЕНТИЧНОСТЬ СБОРКИ
+-------------------
+
+package: com.mitv.accessibilityrestorer
 versionName: 4.0.0
-versionCode: 9
+versionCode: 10
 minSdkVersion: 21
 targetSdkVersion: 28
 compileSdkVersion: 35
-Размер APK: 45537 bytes
-SHA-256 APK: F7AA643DEA0C957C818FAC59194B154F0CA564EB8868CF09035497A2425CAE74
 
-SHA-256 signing certificate:
-646A700698CE0790D6B7F0396D8192E6A093544934E2F7F065F8726E0D3638F5
+APK:
+MiTVAccessibilityRestorer-4.0.0.apk
+size: 49634 bytes
+SHA-256: D1EE2E8B741495D45C721D8C4E3D2C23B72B965160A2833489A03393AEA93AD9
 
-Сертификат совпадает с предыдущими подписанными сборками Restorer;
-`adb install -r` поддерживается.
+Source ZIP:
+MiTVAccessibilityRestorer-4.0.0-sources.zip
+size: 50682 bytes
+SHA-256: 97E4912947C1803029D5146849E21CF53B5006448969370B2BF4783937E25321
 
+classes.dex:
+size: 86616 bytes
+SHA-256: ED197A47E81233CEA1473EC95D28EDF1EF0C79D97C7AB2CD4C78A2A716B9B7A2
+DEX Adler32 checksum reported by dexdump: 14b05d9b
 
-Toolchain
----------
+INSTALL.cmd:
+SHA-256: 4C5B78BCF48654DC387E700F73CE6EB13AA6370DB663CB9C7A8D01BAC0D25EF5
 
-- OpenJDK 17.0.20.1
+СБОРКА
+------
+
+Использован официальный Android toolchain:
+
+- OpenJDK 17
 - Android Platform 35
 - Android Build Tools 35.0.0
-- aapt2 -> javac -> официальный D8 -> zipalign -> apksigner
-- apksigner verify --verbose --print-certs: SUCCESS
-- APK Signature Scheme v1/v2/v3: verified
-- zipalign -c -v 4: SUCCESS
-- APK ZIP entries: manifest, resources, classes.dex, signature metadata
+- aapt2
+- javac -source 8 -target 8
+- D8 --release --min-api 21
+- zipalign
+- apksigner
 
+Команда сборки без секретов:
 
-Manifest
---------
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -JavaHome <jdk17> -AndroidSdkRoot <android-sdk> -Keystore <existing-restorer-keystore>
 
-Binary manifest содержит ровно три permissions:
+Keystore, пароль и alias в исходники, Source ZIP и deliverables не включены.
+
+ПОДПИСЬ
+-------
+
+apksigner verify --verbose --print-certs: SUCCESS
+
+Verified using v1 scheme: true
+Verified using v2 scheme: true
+Verified using v3 scheme: true
+Number of signers: 1
+Key algorithm: RSA, 2048 bits
+
+Signing certificate SHA-256:
+646A700698CE0790D6B7F0396D8192E6A093544934E2F7F065F8726E0D3638F5
+
+Это тот же сертификат, что использовался для предыдущих локальных сборок.
+
+ZIP ALIGNMENT
+-------------
+
+zipalign -c -v 4: Verification successful
+
+BINARY MANIFEST
+---------------
+
+aapt2 dump badging и aapt2 dump xmltree подтвердили:
+
+- package=com.mitv.accessibilityrestorer
+- versionName=4.0.0
+- versionCode=10
+- minSdkVersion=21
+- targetSdkVersion=28
+- compileSdkVersion=35
+
+Ровно три uses-permission:
 
 - android.permission.RECEIVE_BOOT_COMPLETED
 - android.permission.WRITE_SECURE_SETTINGS
 - android.permission.ACCESS_NETWORK_STATE
 
-INTERNET, WRITE_SETTINGS, WAKE_LOCK и AUTO_START отсутствуют.
+Компоненты:
 
-Components:
-
-- MainActivity: exported=true
+- MainActivity: exported=true, launcher/leanback launcher
 - ControlActivity: exported=true
-- RecoveryCoverActivity: exported=false, excludeFromRecents=true
+- RecoveryCoverActivity: exported=false
 - BootReceiver: exported=true, directBootAware=true
 - RestoreReceiver: exported=false, directBootAware=true
+- Service/ForegroundService приложения: отсутствуют
 
-Manifest не содержит Service/ForegroundService. В коде отсутствуют WorkManager,
-JobScheduler, setRepeating и setInexactRepeating.
+BootReceiver содержит:
 
+- android.intent.action.LOCKED_BOOT_COMPLETED
+- android.intent.action.BOOT_COMPLETED
 
-Cold boot regression protection
--------------------------------
+Отсутствуют INTERNET, WRITE_SETTINGS, WAKE_LOCK, AUTO_START и
+FOREGROUND_SERVICE.
 
-Следующие исходники byte-for-byte совпадают с 4.0.0-test4:
+APK / DEX
+---------
+
+APK содержит корректный classes.dex. SHA-256 classes.dex внутри APK совпал с
+SHA-256 непосредственного результата D8.
+
+Полный dexdump -f -d:
+
+- exit code: 0
+- DEX version: 035
+- class definitions: 58
+- output lines: 13871
+- verifier/parser errors: отсутствуют
+
+В DEX найдены, включая inner-классы:
+
+- AccessibilityRestorer
+- BootReceiver
+- RestoreReceiver
+- MainActivity
+- ControlActivity
+- RecoveryEngine
+- RecoveryState
+- RecoveryCoverActivity
+- AccessibilityPlan
+- TorrServeTarget
+- V2RayVpnAssist
+- SetupState
+- SetupStatus
+
+V2RAY BUGFIX
+-------------
+
+Статически подтверждено:
+
+- ConnectivityManager получается только через application context Restorer;
+- diagnostic log содержит contextPackage=com.mitv.accessibilityrestorer на ТВ;
+- VPN state представлен ACTIVE / INACTIVE / UNKNOWN;
+- SecurityException retry: максимум 3 попытки;
+- пауза между retry: 100 ms;
+- лог содержит attempt=N/3, permissionGranted и exception;
+- после исчерпания retries логируется VPN state remains UNKNOWN;
+- UNKNOWN разрешает SEND_ONCE_FALLBACK_STOPPED только после повторного
+  FLAG_STOPPED=true readback;
+- stopped=false + UNKNOWN завершается без blind toggle;
+- непосредственно перед trigger снова проверяется VPN;
+- widget action и component не изменены;
+- в V2RayVpnAssist имеется ровно один вызов sendTrigger и один вызов
+  Context.sendBroadcast;
+- poll после trigger: 250 ms;
+- timeout после trigger: 5000 ms;
+- grace для stopped=false: 2000 ms.
+
+Intent:
+
+action=com.v2raytun.android.action.widget.click
+component=com.v2raytun.android/.receiver.WidgetProvider1x1
+flag=Intent.FLAG_INCLUDE_STOPPED_PACKAGES
+
+Устаревшая строка "ACCESS_NETWORK_STATE unavailable" удалена.
+
+FIRST RUN / INSTALLER
+---------------------
+
+ControlActivity содержит TV-focusable кнопки:
+
+- Завершить настройку
+- Проверить снова
+- Диагностика
+- Восстановить сейчас
+
+SetupStatus проверяет:
+
+- WRITE_SECURE_SETTINGS через checkSelfPermission на API 23+;
+- пакеты и AccessibilityService Button Mapper/Projectivy;
+- optional TorrServe/GlobalTorrService;
+- optional v2RayTun.
+
+SetupState хранит setup_completed=true. Итоговый setupComplete всегда требует
+реально выданного WRITE_SECURE_SETTINGS и наличия двух основных компонентов.
+Optional integrations не блокируют завершение.
+
+INSTALL.cmd статически проверен на workflow:
+
+1. adb.exe в PATH.
+2. adb start-server.
+3. Ровно одно устройство со state=device.
+4. adb install -r APK рядом со скриптом.
+5. pm grant WRITE_SECURE_SETTINGS.
+6. dumpsys readback granted=true.
+7. am start ControlActivity.
+8. success message и pause.
+
+При INSTALL_FAILED_UPDATE_INCOMPATIBLE скрипт только показывает команду
+adb uninstall и не выполняет её.
+
+INSTALL.cmd НЕ содержит и НЕ выполняет запись start_3rd_app.
+
+start_3rd_app внутри APK теперь строго read-only:
+
+- ALREADY_ARMED
+- MISSING_UNARMED
+- READ_FAILED
+
+DEX не содержит Settings.System.putString или статусов WRITE_REQUIRED /
+WRITE_SUCCESS / WRITE_FAILED. APK не создаёт vendor setting.
+
+COLD BOOT REGRESSION
+--------------------
+
+Следующие исходники byte-for-byte совпадают с commit
+817847b92235aaeac5364e63c35c80fa005baf7e:
 
 - BootReceiver.java
 - RestoreReceiver.java
 - BootSessionState.java
 - AccessibilityRestorer.java
 - DirectBootContext.java
-- RecoveryTargets.java
-- TargetApps.java
-- TargetUnstopper.java
-- VendorStartApp.java
-- RecoveryCoverActivity.java
 - RecoveryState.java
 - MainActivity.java
 
-Весь блок `RecoveryEngine.runColdBoot()` сравнен отдельно и совпадает
-посимвольно (3261 символ). Сохранены Direct Boot, BOOT_COUNT/session protection,
-EARLY_BOOT_SETTLE_MS=2500, LOCKED_BOOT_COMPLETED, BOOT_COMPLETED, одноразовый
-fallback alarm 10000 ms, lightweight Accessibility recovery и final Projectivy.
+RecoveryEngine.java отличается от исходного commit только VERSION_CODE 9 -> 10.
+Его runColdBoot(), Direct Boot, BOOT_COUNT, lastCompletedBootCount, early boot
+2500 ms, one-shot fallback alarm 10000 ms, lightweight recovery и final
+Projectivy launch не изменены.
 
-TorrServeTarget и V2RayVpnAssist вызываются только из `runStrSession()` и не
-присутствуют в BootReceiver, RestoreReceiver или AccessibilityRestorer.
+VendorStartApp API/calls сохранены, но helper намеренно переведён в read-only,
+чтобы выполнить требование не записывать start_3rd_app из APK. Это не добавляет
+в cold boot новых фаз, задержек, TorrServe, VPN или setup UI.
 
+В BootReceiver, RestoreReceiver, AccessibilityRestorer и MainActivity нет ссылок
+на TorrServeTarget, V2RayVpnAssist, SetupState или SetupStatus.
 
-STR Accessibility plan
-----------------------
+STR REGRESSION
+--------------
 
-Сохранены interactive settle 500 ms и обязательный порядок:
+RecoveryEngine STR timing profile не изменён:
 
+- interactive settle: 500 ms
 - ALL INITIAL: 2500 ms
 - BASE: 1500 ms
 - MAPPER: 2500 ms
 - ALL FINAL: 1500 ms
-- final Projectivy launch
 
-Normal profile: NORMAL_9S. При измеримой ошибке допускается одна conservative
-attempt после паузы 1000 ms с timings 4000/3000/3000/3000. Максимум 2 attempts.
+Conservative retry не изменён:
 
-BASE удаляет только три managed target и сохраняет остальные raw tokens и их
-порядок:
+- retry pause: 1000 ms
+- ALL INITIAL: 4000 ms
+- BASE: 3000 ms
+- MAPPER: 3000 ms
+- ALL FINAL: 3000 ms
+- максимум 2 attempts
 
-- flar2.homebutton/a.i
-- com.spocky.projengmenu/com.spocky.projengmenu.services.ProjectivyAccessibilityService
-- ru.yourok.torrserve/ru.yourok.torrserve.server.local.services.GlobalTorrService
+Button Mapper/Projectivy invisible unstop, black RecoveryCover, final Projectivy
+и TorrServe только в ALL FINAL не изменены. V2RayVpnAssist остаётся параллельным
+advisory helper и не задерживает final Projectivy.
 
-ALL INITIAL содержит только Mapper+Projectivy. TorrServe добавляется только в
-ALL FINAL и только если пакет и GlobalTorrService найдены. Отсутствие TorrServe
-не влияет на основной execution result.
+ЗАПРЕЩЁННЫЕ МЕХАНИЗМЫ
+----------------------
 
+В manifest/Dex/source отсутствуют:
 
-TorrServe
----------
+- INTERNET
+- Restorer Service / ForegroundService
+- WorkManager / JobScheduler
+- repeating alarm
+- root / su / Shizuku
+- dumpsys invocation из APK
+- TorrServe BCReceiver invocation
+- TorrServe Activity launch
+- v2RayTun Activity launch
 
-Добавлен отдельный STR-only `TorrServeTarget`:
-
-- проверяет `ru.yourok.torrserve`;
-- проверяет точный GlobalTorrService и BIND_ACCESSIBILITY_SERVICE;
-- не запускает Activity;
-- не вызывает BCReceiver;
-- не выполняет отдельный unstop;
-- логирует packageInstalled, accessibilityTargetAvailable,
-  accessibilitySkipped, includedInAllInitial=false, includedInAllFinal и
-  expectedAutoStartViaAccessibility.
-
-APK не утверждает, что TorrServe Bound; это проверяется через dumpsys на ТВ.
-
-
-v2RayTun VPN assist
--------------------
-
-Добавлен STR-only `V2RayVpnAssist`, который запускается отдельным потоком
-параллельно Accessibility recovery. RecoveryEngine не ждёт helper перед final
-Projectivy, а VPN status является advisory и не входит в execution result.
-
-Логика решения:
-
-1. Package missing -> SKIPPED_PACKAGE_MISSING.
-2. Любой TRANSPORT_VPN active -> ALREADY_ACTIVE, trigger не отправляется.
-3. stopped=true и VPN отсутствует -> повторная VPN-проверка и один trigger.
-4. stopped=false и VPN отсутствует -> grace 2000 ms, повторная проверка VPN и
-   FLAG_STOPPED, затем ещё одна VPN-проверка непосредственно перед trigger.
-5. После trigger: poll 250 ms, timeout 5000 ms, CONNECTED или TIMEOUT.
-
-Action/component:
-
-- com.v2raytun.android.action.widget.click
-- com.v2raytun.android/.receiver.WidgetProvider1x1
-- Intent.FLAG_INCLUDE_STOPPED_PACKAGES
-
-DEX-блок V2RayVpnAssist содержит ровно одну ссылку sendBroadcast. UI v2RayTun не
-запускается, v2RayTun не добавляется в enabled_accessibility_services.
-
-
-Session semantics
------------------
-
-Сохранены:
-
-- execution=COMPLETED|PARTIAL|FAILED
-- settingsRecovery=true|false
-- targetUnstop=true|false
-- mapperUnstop=<mode>
-- projectivyUnstop=<mode>
-- torrServeIncluded=true|false
-- finalLaunch=true|false
-- bindingVerification=UNAVAILABLE_IN_APP
-
-Добавлены advisory-поля:
-
-- vpnAssist=<status>
-- vpnTriggerSent=true|false
-- vpnDetected=true|false
-- vpnElapsedMs=<value>
-
-Settings readback не трактуется как подтверждение Bound/Crashed.
-
-
-DEX
----
-
-classes.dex извлечён из итогового APK.
-Размер classes.dex: 78648 bytes
-SHA-256 classes.dex:
-CA1647F506E7AE5FF6A0456E48D5B389389FD049DC456FE2F8CBC2C9CB608EDF
-
-Официальный dexdump:
-
-- checksum verification: SUCCESS
-- полная дизассембляция: exit code 0
-- 52 class definitions
-- 12167 строк дизассемблирования
-
-В DEX подтверждены основные receiver/activity/recovery классы, TorrServeTarget,
-V2RayVpnAssist, exact target/action/component strings, TRANSPORT_VPN marker,
-FLAG_INCLUDE_STOPPED_PACKAGES, FLAG_STOPPED и все timing constants.
-
-Отсутствуют BCReceiver, WorkManager, JobScheduler, repeating alarms, Shizuku,
-dumpsys invocation, WindowChangeDetectingService и test branding.
-
-
-Изменённые/добавленные файлы
----------------------------
-
-Изменены относительно 4.0.0-test4:
-
-- AndroidManifest.xml
-- strings.xml
-- AccessibilityPlan.java
-- RecoveryEngine.java
-- ControlActivity.java
-- build.ps1
-- README.md
-- .gitignore
-
-Добавлены:
-
-- TorrServeTarget.java
-- V2RayVpnAssist.java
-- INSTALL-RU.txt
-- VERIFICATION.txt
-- SHA256SUMS.txt
-- RELEASE-NOTES-RU.md
-
-
-Source ZIP
+SOURCE ZIP
 ----------
 
-Файл: MiTVAccessibilityRestorer-4.0.0-sources.zip
-Размер: 48819 bytes
-SHA-256: 3F02E368AC5ECBA3CAD95884CAC4F14D7B1D9F1CFAAE4A56E0B62F337128FD74
+Source ZIP создан из явного белого списка. Проверено:
 
-ZIP содержит app/src, build.ps1, README.md, .gitignore, INSTALL-RU.txt и
-RELEASE-NOTES-RU.md. Проверено 37 entries/27 files. APK, keystore, password,
-реальные signing aliases, SDK, JDK, `.build`, `dist`, downloads, Git metadata,
-GitHub auth data и tokens отсутствуют.
+- entries: 35
+- files: 30
+- APK: отсутствует
+- keystore: отсутствует
+- реальные password/alias: отсутствуют
+- SDK/JDK: отсутствуют
+- .build/dist/build cache: отсутствуют
+- .git/GitHub auth/tokens: отсутствуют
+- INSTALL.cmd: присутствует
 
+ФИЗИЧЕСКАЯ ПРОВЕРКА, КОТОРУЮ ЕЩЁ НУЖНО ВЫПОЛНИТЬ
+-------------------------------------------------
 
-Команда сборки
---------------
+Сначала удалить переживающий uninstall vendor setting:
 
-$env:MITV_RESTORER_KEYSTORE_PASSWORD = '<existing-keystore-password>'
-$env:MITV_RESTORER_KEY_ALIAS = '<existing-key-alias>'
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 `
-  -JavaHome C:\path\to\jdk17 `
-  -AndroidSdkRoot C:\path\to\android-sdk `
-  -Keystore C:\path\to\existing-restorer-keystore.jks
+adb shell settings delete system start_3rd_app
+adb shell settings get system start_3rd_app
 
+Ожидается: null
 
-Известные ограничения
----------------------
+Затем:
 
-- Новый объединённый релиз не проверялся Codex на физическом телевизоре.
-- Реальный Bound/Binding/Crashed определяется только dumpsys accessibility.
-- Наличие native torrserver и VPN/tun0 определяется системными командами.
-- Любой уже активный VPN transport безопасно подавляет v2RayTun toggle.
-- Target receiver/service components зависят от установленных версий приложений.
-- Emergency visible fallback может показать промежуточный кадр.
+adb uninstall com.mitv.accessibilityrestorer
+
+Установить через INSTALL.cmd и убедиться, что скрипт не создаёт setting:
+
+adb shell settings get system start_3rd_app
+
+Ожидается: null
+
+Выполнить минимум 3 цикла Sleep -> 30 sec -> Wake и отдельно минимум 5 STR для
+v2RayTun. Нужна проверка обычного пути SEND_ONCE -> CONNECTED и, если Xiaomi
+воспроизведёт SecurityException, пути:
+
+SecurityException -> retries -> UNKNOWN -> stopped=true
+-> SEND_ONCE_FALLBACK_STOPPED -> CONNECTED
+
+Также проверить cold boot, dumpsys accessibility, Binding/Crashed, процессы
+TorrServe/torrserver, VPN transport/tun0 и Home -> Projectivy без Xiaomi flicker.
+
+GitHub Release на момент создания этого отчёта НЕ опубликован.

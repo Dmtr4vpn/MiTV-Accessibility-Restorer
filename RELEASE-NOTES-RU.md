@@ -1,34 +1,48 @@
 # MiTV Accessibility Restorer 4.0.0
 
-Рабочий релиз для Xiaomi Mi TV S75 / MiTV-MFTR0 с прошивкой MiTV OS 2.8.1712
-на Android 11.
+Финальная локальная кандидатная сборка для Xiaomi Mi TV S75 / MiTV-MFTR0 с
+MiTV OS 2.8.1712 / Android 11.
 
-## Основное
+## Изменения
 
-- Сохранён быстрый accelerated cold boot с автоматическим запуском Projectivy.
-- Smooth STR занимает около 9 секунд и скрыт непрозрачным чёрным recovery cover.
-- Восстанавливаются Accessibility Button Mapper и Projectivy.
-- Button Mapper восстанавливает прямой переход Home -> Projectivy без мелькания
-  Xiaomi Home; штатный Xiaomi tvhome остаётся fallback.
-- TorrServe MatriX добавляется только в финальную STR-фазу Accessibility, что
-  позволяет системе запустить TorrServe и native `torrserver` без открытия UI.
-- v2RayTun VPN assist параллельно проверяет активный VPN и при необходимости
-  отправляет не более одного безопасного widget broadcast без открытия UI.
+- Исправлено восстановление v2RayTun после подтверждённого Xiaomi
+  `ConnectivityManager` `SecurityException`.
+- `ConnectivityManager` теперь всегда получается от application context пакета
+  `com.mitv.accessibilityrestorer`.
+- При `SecurityException` выполняется максимум три попытки с паузой `100 ms`.
+- Если VPN остаётся `UNKNOWN`, widget trigger разрешён только после повторного
+  подтверждения `FLAG_STOPPED=true`; для `stopped=false` blind toggle запрещён.
+- Сохранены один trigger за STR, grace `2000 ms`, poll `250 ms` и timeout
+  `5000 ms`.
+- Добавлен first-run экран для ТВ-пульта с проверкой основных и необязательных
+  компонентов, разрешения и внутренним маркером `setup_completed`.
+- Добавлен `INSTALL.cmd`: установка, выдача/readback `WRITE_SECURE_SETTINGS` и
+  открытие setup UI без автоматического uninstall.
+- Стандартная установка больше не записывает `start_3rd_app`; advisory readback
+  внутри STR оставлен и не считается ошибкой.
+
+## Сохранённое поведение
+
+- Accelerated cold boot не изменён.
+- Smooth STR сохраняет профиль `500 + 2500 + 1500 + 2500 + 1500 ms` и чёрный
+  recovery cover.
+- Button Mapper и Projectivy восстанавливаются прежним способом.
+- TorrServe Accessibility добавляется только в `ALL FINAL`.
+- Xiaomi tvhome остаётся fallback.
 
 ## Совместимость
 
 - Package: `com.mitv.accessibilityrestorer`
-- Version: `4.0.0` (`versionCode 9`)
+- Version: `4.0.0` (`versionCode 10`)
 - minSdk: 21
 - targetSdk: 28
 - compileSdk: 35
 
-APK подписан прежним сертификатом и поддерживает обновление через
-`adb install -r` с предыдущих сборок, подписанных тем же ключом.
+APK подписан прежним сертификатом и поддерживает `adb install -r` с версиями,
+подписанными тем же ключом.
 
 ## Проверка
 
-Механизмы основаны на ранее выполненных физических проверках Smooth STR,
-TorrServe Accessibility auto-start и v2RayTun widget broadcast. Объединённый APK
-`4.0.0` должен быть отдельно проверен на физическом телевизоре, включая
-Bound/Binding/Crashed, native `torrserver`, VPN transport и Home remap.
+APK проходит локальную статическую проверку стандартным Android toolchain. Новый
+`versionCode 10` ещё не проходил физический clean-install/STR/cold-boot тест на ТВ.
+Публикация GitHub Release отложена до отдельного разрешения после regression test.

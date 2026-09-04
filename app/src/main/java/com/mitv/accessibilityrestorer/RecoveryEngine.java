@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 final class RecoveryEngine {
     static final String VERSION_NAME = "4.0.0";
-    static final int VERSION_CODE = 9;
+    static final int VERSION_CODE = 10;
 
     static final long STR_INTERACTIVE_SETTLE_MS = 500L;
     static final long EARLY_BOOT_SETTLE_MS = 2_500L;

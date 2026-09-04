@@ -24,13 +24,14 @@ final class V2RayVpnAssist {
     static final long RUNNING_GRACE_MS = 2_000L;
     static final long VPN_POLL_MS = 250L;
     static final long VPN_TIMEOUT_MS = 5_000L;
+    static final int VPN_READ_MAX_ATTEMPTS = 3;
+    static final long VPN_READ_RETRY_MS = 100L;
 
     private V2RayVpnAssist() {
     }
 
     static Handle start(Context context, final String sessionId) {
-        final Context appContext = context.getApplicationContext() == null
-                ? context : context.getApplicationContext();
+        final Context appContext = applicationContext(context);
         final Handle handle = new Handle(SystemClock.elapsedRealtime());
         try {
             Thread worker = new Thread(new Runnable() {
@@ -65,15 +66,19 @@ final class V2RayVpnAssist {
     }
 
     static boolean isPackageInstalled(Context context) {
-        return readPackageState(context).installed;
+        return readPackageState(applicationContext(context)).installed;
     }
 
     static boolean isVpnActive(Context context) {
-        VpnState state = readVpnState(context);
-        return state.known && state.active;
+        return readVpnState(context) == VpnState.ACTIVE;
+    }
+
+    static String getVpnStateForStatus(Context context) {
+        return stateValue(readVpnState(context));
     }
 
     private static Result run(Context context) {
+        context = applicationContext(context);
         long started = SystemClock.elapsedRealtime();
         PackageState packageState = readPackageState(context);
         Log.i(AccessibilityRestorer.LOG_TAG,
@@ -99,13 +104,8 @@ final class V2RayVpnAssist {
                 "VPN detection check=NetworkCapabilities.TRANSPORT_VPN");
         VpnState before = readVpnState(context);
         Log.i(AccessibilityRestorer.LOG_TAG,
-                "VPN BEFORE active=" + stateValue(before.known, before.active));
-        if (!before.known) {
-            Log.e(AccessibilityRestorer.LOG_TAG,
-                    "V2RAY VPN trigger decision=TRIGGER_FAILED reason=vpn_state_unknown");
-            return result(Status.TRIGGER_FAILED, false, false, started);
-        }
-        if (before.active) {
+                "VPN BEFORE active=" + stateValue(before));
+        if (before == VpnState.ACTIVE) {
             Log.i(AccessibilityRestorer.LOG_TAG,
                     "V2RAY VPN trigger decision=VPN_ALREADY_ACTIVE");
             return result(Status.ALREADY_ACTIVE, false, true, started);
@@ -117,7 +117,25 @@ final class V2RayVpnAssist {
             return result(Status.TRIGGER_FAILED, false, false, started);
         }
 
-        if (!packageState.stopped) {
+        boolean fallbackStopped = false;
+        if (packageState.stopped && before == VpnState.UNKNOWN) {
+            PackageState stoppedReadback = readPackageState(context);
+            logStoppedReadback(stoppedReadback);
+            if (isInstalledAndStopped(stoppedReadback)) {
+                fallbackStopped = true;
+            } else {
+                Log.e(AccessibilityRestorer.LOG_TAG,
+                        "V2RAY VPN trigger decision=TRIGGER_FAILED"
+                                + " reason=vpn_state_unknown_without_stopped_readback");
+                return result(Status.TRIGGER_FAILED, false, false, started);
+            }
+        } else if (!packageState.stopped) {
+            if (before == VpnState.UNKNOWN) {
+                Log.e(AccessibilityRestorer.LOG_TAG,
+                        "V2RAY VPN trigger decision=TRIGGER_FAILED"
+                                + " reason=vpn_state_unknown_running_no_blind_toggle");
+                return result(Status.TRIGGER_FAILED, false, false, started);
+            }
             Log.i(AccessibilityRestorer.LOG_TAG,
                     "V2RAY VPN trigger decision=GRACE_ALREADY_RUNNING"
                             + ", graceMs=" + RUNNING_GRACE_MS);
@@ -128,11 +146,11 @@ final class V2RayVpnAssist {
             VpnState afterGrace = readVpnState(context);
             Log.i(AccessibilityRestorer.LOG_TAG,
                     "VPN AFTER GRACE active="
-                            + stateValue(afterGrace.known, afterGrace.active));
-            if (!afterGrace.known) {
+                            + stateValue(afterGrace));
+            if (afterGrace == VpnState.UNKNOWN) {
                 return result(Status.TRIGGER_FAILED, false, false, started);
             }
-            if (afterGrace.active) {
+            if (afterGrace == VpnState.ACTIVE) {
                 Log.i(AccessibilityRestorer.LOG_TAG,
                         "V2RAY VPN trigger decision=SKIPPED_ALREADY_RUNNING_GRACE");
                 return result(
@@ -152,24 +170,37 @@ final class V2RayVpnAssist {
                     || !afterGracePackage.stoppedKnown) {
                 return result(Status.TRIGGER_FAILED, false, false, started);
             }
+            packageState = afterGracePackage;
         }
 
         VpnState immediatelyBeforeTrigger = readVpnState(context);
         Log.i(AccessibilityRestorer.LOG_TAG,
-                "VPN IMMEDIATELY BEFORE TRIGGER active=" + stateValue(
-                        immediatelyBeforeTrigger.known,
-                        immediatelyBeforeTrigger.active));
-        if (!immediatelyBeforeTrigger.known) {
-            return result(Status.TRIGGER_FAILED, false, false, started);
-        }
-        if (immediatelyBeforeTrigger.active) {
+                "VPN IMMEDIATELY BEFORE TRIGGER active="
+                        + stateValue(immediatelyBeforeTrigger));
+        if (immediatelyBeforeTrigger == VpnState.ACTIVE) {
             Log.i(AccessibilityRestorer.LOG_TAG,
                     "V2RAY VPN trigger decision=VPN_ALREADY_ACTIVE");
             return result(Status.ALREADY_ACTIVE, false, true, started);
         }
 
+        if (immediatelyBeforeTrigger == VpnState.UNKNOWN) {
+            PackageState stoppedReadback = readPackageState(context);
+            logStoppedReadback(stoppedReadback);
+            if (!isInstalledAndStopped(stoppedReadback)) {
+                Log.e(AccessibilityRestorer.LOG_TAG,
+                        "V2RAY VPN trigger decision=TRIGGER_FAILED"
+                                + " reason=pre_trigger_unknown_without_stopped_readback");
+                return result(Status.TRIGGER_FAILED, false, false, started);
+            }
+            fallbackStopped = true;
+        } else {
+            fallbackStopped = false;
+        }
+
         Log.i(AccessibilityRestorer.LOG_TAG,
-                "V2RAY VPN trigger decision=SEND_ONCE"
+                "V2RAY VPN trigger decision="
+                        + (fallbackStopped
+                        ? "SEND_ONCE_FALLBACK_STOPPED" : "SEND_ONCE")
                         + ", stopped=" + packageState.stopped);
         if (!sendTrigger(context)) {
             return result(Status.TRIGGER_FAILED, false, false, started);
@@ -181,9 +212,9 @@ final class V2RayVpnAssist {
             VpnState current = readVpnState(context);
             long elapsed = SystemClock.elapsedRealtime() - started;
             Log.i(AccessibilityRestorer.LOG_TAG,
-                    "V2RAY VPN poll active=" + stateValue(current.known, current.active)
+                    "V2RAY VPN poll active=" + stateValue(current)
                             + ", elapsedMs=" + elapsed);
-            if (current.known && current.active) {
+            if (current == VpnState.ACTIVE) {
                 Log.i(AccessibilityRestorer.LOG_TAG,
                         "VPN AFTER active=true, elapsedMs=" + elapsed);
                 return result(Status.CONNECTED, true, true, started);
@@ -245,37 +276,88 @@ final class V2RayVpnAssist {
     }
 
     private static VpnState readVpnState(Context context) {
-        try {
-            ConnectivityManager manager = (ConnectivityManager) context.getSystemService(
-                    Context.CONNECTIVITY_SERVICE);
-            if (manager == null) {
+        Context appContext = applicationContext(context);
+        for (int attempt = 1; attempt <= VPN_READ_MAX_ATTEMPTS; attempt++) {
+            try {
+                return readVpnStateOnce(appContext);
+            } catch (SecurityException exception) {
+                boolean permissionGranted = hasNetworkStatePermission(appContext);
                 Log.e(AccessibilityRestorer.LOG_TAG,
-                        "V2RAY ConnectivityManager unavailable");
-                return new VpnState(false, false);
-            }
-            Network[] networks = manager.getAllNetworks();
-            if (networks == null) {
-                return new VpnState(true, false);
-            }
-            for (Network network : networks) {
-                NetworkCapabilities capabilities = manager.getNetworkCapabilities(network);
-                if (capabilities != null
-                        && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-                    return new VpnState(true, true);
+                        "V2RAY VPN detection SecurityException"
+                                + " attempt=" + attempt + "/" + VPN_READ_MAX_ATTEMPTS
+                                + " permissionGranted=" + permissionGranted
+                                + " contextPackage=" + appContext.getPackageName()
+                                + " exception=" + exception,
+                        exception);
+                if (attempt < VPN_READ_MAX_ATTEMPTS
+                        && !sleep(VPN_READ_RETRY_MS, "V2RAY VPN detection retry")) {
+                    return VpnState.UNKNOWN;
                 }
+            } catch (RuntimeException exception) {
+                Log.e(AccessibilityRestorer.LOG_TAG,
+                        "V2RAY VPN detection failed"
+                                + " contextPackage=" + appContext.getPackageName(),
+                        exception);
+                return VpnState.UNKNOWN;
             }
-            return new VpnState(true, false);
-        } catch (SecurityException exception) {
-            Log.e(AccessibilityRestorer.LOG_TAG,
-                    "V2RAY VPN detection denied; ACCESS_NETWORK_STATE unavailable",
-                    exception);
-            return new VpnState(false, false);
-        } catch (RuntimeException exception) {
-            Log.e(AccessibilityRestorer.LOG_TAG,
-                    "V2RAY VPN detection failed",
-                    exception);
-            return new VpnState(false, false);
         }
+        Log.w(AccessibilityRestorer.LOG_TAG,
+                "V2RAY VPN state remains UNKNOWN after retries");
+        return VpnState.UNKNOWN;
+    }
+
+    private static VpnState readVpnStateOnce(Context appContext) {
+        ConnectivityManager manager = (ConnectivityManager) appContext.getSystemService(
+                Context.CONNECTIVITY_SERVICE);
+        if (manager == null) {
+            Log.e(AccessibilityRestorer.LOG_TAG,
+                    "V2RAY ConnectivityManager unavailable"
+                            + " contextPackage=" + appContext.getPackageName());
+            return VpnState.UNKNOWN;
+        }
+        Network[] networks = manager.getAllNetworks();
+        if (networks == null) {
+            return VpnState.INACTIVE;
+        }
+        for (Network network : networks) {
+            NetworkCapabilities capabilities = manager.getNetworkCapabilities(network);
+            if (capabilities != null
+                    && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                return VpnState.ACTIVE;
+            }
+        }
+        return VpnState.INACTIVE;
+    }
+
+    private static boolean hasNetworkStatePermission(Context context) {
+        try {
+            return context.getPackageManager().checkPermission(
+                    android.Manifest.permission.ACCESS_NETWORK_STATE,
+                    context.getPackageName()) == PackageManager.PERMISSION_GRANTED;
+        } catch (RuntimeException exception) {
+            Log.w(AccessibilityRestorer.LOG_TAG,
+                    "V2RAY ACCESS_NETWORK_STATE permission readback failed",
+                    exception);
+            return false;
+        }
+    }
+
+    private static Context applicationContext(Context context) {
+        Context appContext = context.getApplicationContext();
+        return appContext == null ? context : appContext;
+    }
+
+    private static boolean isInstalledAndStopped(PackageState state) {
+        return state.packageKnown
+                && state.installed
+                && state.stoppedKnown
+                && state.stopped;
+    }
+
+    private static void logStoppedReadback(PackageState state) {
+        Log.i(AccessibilityRestorer.LOG_TAG,
+                "V2RAY stopped readback="
+                        + stateValue(state.stoppedKnown, state.stopped));
     }
 
     private static ComponentName component(String flattened) {
@@ -311,6 +393,16 @@ final class V2RayVpnAssist {
 
     private static String stateValue(boolean known, boolean value) {
         return known ? Boolean.toString(value) : "unknown";
+    }
+
+    private static String stateValue(VpnState state) {
+        if (state == VpnState.ACTIVE) {
+            return "true";
+        }
+        if (state == VpnState.INACTIVE) {
+            return "false";
+        }
+        return "unknown";
     }
 
     enum Status {
@@ -387,13 +479,9 @@ final class V2RayVpnAssist {
         }
     }
 
-    private static final class VpnState {
-        final boolean known;
-        final boolean active;
-
-        VpnState(boolean known, boolean active) {
-            this.known = known;
-            this.active = active;
-        }
+    private enum VpnState {
+        ACTIVE,
+        INACTIVE,
+        UNKNOWN
     }
 }
