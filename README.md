@@ -5,7 +5,7 @@ Android TV-приложение для восстановления рабоче
 
 - package: `com.mitv.accessibilityrestorer`
 - versionName: `4.0.0`
-- versionCode: `12`
+- versionCode: `13`
 - minSdk: `21`
 - targetSdk: `28`
 - compileSdk: `35`
@@ -133,11 +133,21 @@ VPN определяется через `ConnectivityManager` application contex
 
 ## Пользовательский экран
 
-`MainActivity` остаётся единственным `MAIN/LAUNCHER` и `LEANBACK_LAUNCHER`, так
-как Xiaomi использует этот entry для cold boot. Сначала выполняется существующая
-проверка boot/STR/recovery-состояния. Только при интерактивном запуске без
-`BOOT_PENDING`, STR/wake-перехода и активной recovery-сессии MainActivity открывает
-`ControlActivity` и завершается без cover, reset и принудительного Projectivy.
+`MainActivity` остаётся единственным `MAIN/LAUNCHER`, который Xiaomi использует
+как recovery/bootstrap entry при cold boot и STR. Она всегда выполняет recovery
+semantics и никогда не маршрутизирует пользовательский запуск в UI по runtime-
+эвристике.
+
+Пользовательские entry points принадлежат `ControlActivity`:
+
+```text
+MAIN + LEANBACK_LAUNCHER -> ControlActivity
+MAIN + INFO              -> ControlActivity
+```
+
+Обычный `LAUNCHER` у `ControlActivity` отсутствует. Поэтому Xiaomi recovery launch
+остаётся на `MainActivity`, Android TV-карточка открывает `ControlActivity`, а
+package front-door/Settings «Открыть» получает `ControlActivity` через `INFO`.
 
 `ControlActivity` показывает core-компоненты, необязательные TorrServe/v2RayTun,
 состояние `WRITE_SECURE_SETTINGS`, диагностику и кнопку «Восстановить сейчас».
@@ -170,6 +180,6 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 `
 
 ## Ограничения проверки
 
-APK `versionCode 12` собран и статически проверен, но физические cold boot,
+APK `versionCode 13` собран и статически проверен, но физические cold boot,
 ручное открытие UI и STR regression должен выполнить пользователь на телевизоре.
 Приложение не может заменить проверку Bound/Binding/Crashed через `dumpsys`.

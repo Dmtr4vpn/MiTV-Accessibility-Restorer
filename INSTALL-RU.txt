@@ -1,7 +1,7 @@
 MiTV Accessibility Restorer 4.0.0
 =================================
 
-Версия: 4.0.0 (versionCode 12)
+Версия: 4.0.0 (versionCode 13)
 Package: com.mitv.accessibilityrestorer
 
 СТАНДАРТНАЯ УСТАНОВКА
@@ -140,20 +140,26 @@ ACCEPTANCE: РУЧНОЕ ОТКРЫТИЕ
 
 Настройки -> Все приложения -> MiTV Accessibility Restorer -> Открыть
 
-Либо выполните launcher-entry явно:
+Проверьте системное разрешение entry points:
 
-adb shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n com.mitv.accessibilityrestorer/.MainActivity
+adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.LAUNCHER com.mitv.accessibilityrestorer
+adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER com.mitv.accessibilityrestorer
+adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.INFO com.mitv.accessibilityrestorer
 
-Ожидается ControlActivity. Не должны появиться black RecoveryCover,
-Accessibility popup, STR/EARLY_BOOT recovery или принудительный Projectivy.
+Ожидается соответственно:
 
-Проверка маршрута:
+com.mitv.accessibilityrestorer/.MainActivity
+com.mitv.accessibilityrestorer/.ControlActivity
+com.mitv.accessibilityrestorer/.ControlActivity
 
-adb shell "logcat -d | grep -iE 'MAIN DECISION|MAIN ROUTE|MiTVRestorer'"
+Настройки -> Все приложения -> MiTV Accessibility Restorer -> Открыть должны
+показать ControlActivity без RecoveryCover и recovery. Карточка Restorer в Android
+TV/Projectivy также должна открыть ControlActivity через LEANBACK_LAUNCHER.
 
-Ожидаемые строки:
+В MainActivity не должно быть строк:
 
-MAIN DECISION ... mode=USER_UI ... reason=no_recovery_required
+mode=USER_UI
+reason=no_recovery_required
 MAIN ROUTE -> ControlActivity
 
 ACCEPTANCE: STR REGRESSION
@@ -166,11 +172,15 @@ Sleep -> 30 секунд -> Wake
 Ожидается прежний путь:
 
 RecoveryCover
+-> STR SESSION START
 -> Mapper recovery
 -> Projectivy recovery
 -> TorrServe в ALL_FINAL, если доступен
 -> v2RayTun assist, если доступен
+-> SESSION FINISH COMPLETED
 -> Projectivy final foreground
+
+ControlActivity во время STR появляться не должна.
 
 Проверенные тайминги должны остаться:
 
@@ -190,6 +200,6 @@ adb shell "logcat -d | grep -iE 'STR TIMING|STR RESET|V2RAY|MiTVRestorer|Android
 ФИЗИЧЕСКАЯ ПРОВЕРКА
 --------------------
 
-Codex не подключался к реальному телевизору. APK versionCode 12 прошёл сборку и
+Codex не подключался к реальному телевизору. APK versionCode 13 прошёл сборку и
 статическую проверку, но cold boot, manual UI и STR regression должны быть
 подтверждены на Xiaomi Mi TV S75 пользователем до публикации GitHub Release.

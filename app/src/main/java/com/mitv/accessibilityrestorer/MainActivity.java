@@ -29,7 +29,6 @@ public final class MainActivity extends Activity {
             String action = intent == null ? null : intent.getAction();
             String trigger = Intent.ACTION_SCREEN_ON.equals(action)
                     ? "SCREEN_ON" : "STR_BOOT_COMPLETED";
-            strRecoveryRequired = true;
             Log.i(AccessibilityRestorer.LOG_TAG,
                     "TRIGGER broadcast received action=" + action);
             evaluateTrigger(trigger);
@@ -39,7 +38,6 @@ public final class MainActivity extends Activity {
     private boolean receiverRegistered;
     private boolean recoveryScheduled;
     private boolean strCoverRequested;
-    private boolean strRecoveryRequired;
     private long createdElapsed;
 
     @Override
@@ -145,41 +143,13 @@ public final class MainActivity extends Activity {
             return;
         }
 
+        prepareStrCover(trigger);
         if (!interactive) {
-            strRecoveryRequired = true;
-            prepareStrCover(trigger);
             waitForStateChange(trigger, false);
             return;
         }
 
-        if (!strRecoveryRequired && !RecoveryState.hasActiveSession(this)) {
-            routeToControlActivity(trigger, decision);
-            return;
-        }
-
-        prepareStrCover(trigger);
         scheduleStrRecovery(trigger);
-    }
-
-    private void routeToControlActivity(
-            String trigger, RecoveryState.MainDecision decision) {
-        Log.i(AccessibilityRestorer.LOG_TAG,
-                "MAIN DECISION trigger=" + trigger
-                        + ", mode=USER_UI"
-                        + ", currentBootCount=" + decision.currentBootCount
-                        + ", lastCompletedBootCount=" + decision.completedBootCount
-                        + ", elapsedRealtime=" + decision.elapsedRealtime
-                        + ", isInteractive=true"
-                        + ", reason=no_recovery_required");
-        Log.i(AccessibilityRestorer.LOG_TAG, "MAIN ROUTE -> ControlActivity");
-        try {
-            startActivity(new Intent(this, ControlActivity.class));
-        } catch (RuntimeException exception) {
-            Log.e(AccessibilityRestorer.LOG_TAG,
-                    "MAIN ROUTE ControlActivity failed",
-                    exception);
-        }
-        finish();
     }
 
     private static boolean hasAdvancedBootCount(RecoveryState.MainDecision decision) {
