@@ -23,13 +23,13 @@ compileSdkVersion: 35
 
 APK:
 MiTVAccessibilityRestorer-4.0.0.apk
-size: 53730 bytes
-SHA-256: 9EB3351DA42F2FD4F33654FD2791E9C752F46A86EAE755E170E364039F8815BA
+size: 1430404 bytes
+SHA-256: 76A1B685DD2F1A71EAD7FA5B03C6E854902829614CE415EAD9622ED1FEE601AD
 
 Source ZIP:
 MiTVAccessibilityRestorer-4.0.0-sources.zip
-size: 63340 bytes
-SHA-256: 717DD1EAA2C5A0D52926F91C34D65E72C3DCF6565440A4F37D26D61627689E53
+size: 2204883 bytes
+SHA-256: E8CAB13CF6CF5DA6DD9EE64EB4EFD26BC36FCB0C42C27C2CC02845F53D0905D5
 
 classes.dex:
 size: 94480 bytes
@@ -108,6 +108,29 @@ BootReceiver слушает:
 
 Отсутствуют INTERNET, WRITE_SETTINGS, WAKE_LOCK, AUTO_START и
 FOREGROUND_SERVICE.
+
+ICON / ANDROID TV BANNER
+------------------------
+
+aapt2 и содержимое APK подтвердили:
+
+- android:icon=@mipmap/ic_launcher;
+- android:banner=@drawable/restorer_banner на application;
+- ic_launcher.png: mdpi 48x48;
+- ic_launcher.png: hdpi 72x72;
+- ic_launcher.png: xhdpi 96x96;
+- ic_launcher.png: xxhdpi 144x144;
+- ic_launcher.png: xxxhdpi 192x192;
+- restorer_banner.png: drawable-nodpi, 1280x720, строго 16:9;
+- прежний drawable/ic_launcher.xml отсутствует в APK;
+- roundIcon в исходном Manifest отсутствовал и не добавлялся.
+
+Android TV получает banner через application-level android:banner, наследуемый
+MainActivity с LEANBACK_LAUNCHER. Фактическое отображение launcher физически не
+проверялось в среде сборки.
+
+SHA-256 classes.dex совпадает с APK до замены ресурсов, то есть исполняемый код
+recovery/boot/STR/UI не изменён.
 
 APK / DEX
 ---------
@@ -318,9 +341,11 @@ SOURCE ZIP
 
 Source ZIP создан по явному белому списку:
 
-- entries: 41
-- files: 31
+- entries: 52
+- files: 36
 - новый PostBootOptionalRecovery.java: присутствует
+- пять density launcher PNG и drawable-nodpi banner: присутствуют
+- прежний drawable/ic_launcher.xml: отсутствует
 - app source/resources, build.ps1, INSTALL.cmd и документация: присутствуют
 - APK, keystore, SDK/JDK, .build, dist, .git, auth/tokens: отсутствуют
 
