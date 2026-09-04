@@ -1,194 +1,175 @@
 # MiTV Accessibility Restorer
 
-Android TV-приложение для автоматического восстановления окружения Xiaomi Mi TV
-S75 после холодной загрузки и горячего пробуждения (STR).
+Android TV-приложение для восстановления рабочего окружения Xiaomi Mi TV S75
+после холодной загрузки и пробуждения из сна (STR).
 
 - package: `com.mitv.accessibilityrestorer`
 - versionName: `4.0.0`
-- versionCode: `11`
+- versionCode: `12`
 - minSdk: `21`
 - targetSdk: `28`
 - compileSdk: `35`
-- целевое устройство: Xiaomi Mi TV S75 / MiTV-MFTR0
-- проверенная базовая прошивка: MiTV OS 2.8.1712 / Android 11
+- проверенная базовая среда: Xiaomi Mi TV S75, MiTV OS 2.8.1712, Android 11
 
 ## Назначение
 
-При cold boot Restorer восстанавливает Accessibility Button Mapper и Projectivy,
-после чего открывает Projectivy и отдельным неблокирующим шагом запускает
-восстановление v2RayTun VPN. При STR приложение дополнительно восстанавливает
-TorrServe Accessibility и параллельно помогает запустить v2RayTun VPN.
+Основными компонентами считаются Button Mapper и Projectivy Launcher. TorrServe
+и v2RayTun являются необязательными интеграциями: их отсутствие или ошибка не
+меняют успешность core-восстановления.
 
-Обычный визуальный путь STR:
-
-```text
-Wake -> black RecoveryCover -> Projectivy
-```
-
-Restorer не меняет Android default HOME и не отключает `com.mitv.tvhome`.
-
-## Первичная настройка
-
-Стандартная установка выполняется файлом `INSTALL.cmd` из корня
-`ADBAppControl-1.8.6`; APK помещаются в подпапку `install`, а локальный ADB
-находится в `adb\adb.exe`. Скрипт:
-
-1. Проверяет локальный `adb` и помогает подключить или спарить телевизор.
-2. Для каждого `install\*.apk` сравнивает package и `versionCode`: устанавливает
-   новый пакет, обновляет старую версию, пропускает одинаковую и не делает downgrade.
-3. Выдаёт и проверяет `WRITE_SECURE_SETTINGS`.
-4. Открывает `ControlActivity` с экраном первоначальной настройки.
-
-Экран показывает основные компоненты Button Mapper/Projectivy, необязательные
-интеграции TorrServe/v2RayTun и реальное состояние `WRITE_SECURE_SETTINGS`.
-Кнопка «Завершить настройку» записывает `setup_completed=true` только при наличии
-разрешения и двух основных AccessibilityService. TorrServe и v2RayTun не являются
-обязательными для завершения.
-
-APK не пытается сам выполнять `pm grant`, root, Shizuku или локальный ADB. Если
-разрешение отсутствует, UI предлагает повторную проверку и показывает команду для
-ручной выдачи.
+Restorer не меняет Android default HOME, не отключает `com.mitv.tvhome`, не
+использует постоянный Android Service и не выполняет периодический мониторинг.
 
 ## Установка
 
-1. Включите ADB debugging на ТВ.
-2. Подключите ТВ к ПК и подтвердите отладку.
-3. Поместите `INSTALL.cmd` в корень `ADBAppControl-1.8.6`, а APK — в `install`.
-4. Запустите `INSTALL.cmd`.
-5. Завершите настройку на открывшемся экране ТВ.
+Рекомендуемый комплект имеет структуру:
 
-Расширенная ручная установка:
+```text
+ADBAppControl-1.8.6\
+  INSTALL.cmd
+  adb\adb.exe
+  install\*.apk
+```
 
-```bash
+`INSTALL.cmd` подключает телевизор, последовательно обрабатывает все APK и
+сравнивает именно `versionCode`:
+
+```text
+package отсутствует                 -> adb install
+installedVersionCode < apkVersion   -> adb install -r
+installedVersionCode = apkVersion   -> установка пропущена
+installedVersionCode > apkVersion   -> downgrade пропущен
+```
+
+После любого результата для Restorer скрипт проверяет/выдаёт
+`WRITE_SECURE_SETTINGS`, проверяет readback и открывает `ControlActivity`.
+Автоматический uninstall не выполняется. Подробности записываются с нуля в один
+`INSTALL-LOG.txt`.
+
+Ручная установка:
+
+```text
 adb install -r MiTVAccessibilityRestorer-4.0.0.apk
 adb shell pm grant com.mitv.accessibilityrestorer android.permission.WRITE_SECURE_SETTINGS
 adb shell am start -n com.mitv.accessibilityrestorer/.ControlActivity
 ```
 
-Стандартный installer не настраивает `Settings.System["start_3rd_app"]`. Текущая
-STR-архитектура рассчитана на работу без этого шага установки. Физический cold
-boot подтвердил запуск Restorer при пустом setting. Внутренний advisory readback
-`ALREADY_ARMED`/`MISSING_UNARMED` сохранён и не считается ошибкой.
+Стандартная установка и APK не записывают `Settings.System.start_3rd_app`.
+Пустое значение допустимо и логируется только как advisory `MISSING_UNARMED`.
 
 ## Cold boot
 
-Cold boot использует Direct Boot, `LOCKED_BOOT_COMPLETED` и резервный
-`BOOT_COMPLETED`, защиту по `BOOT_COUNT`, ранний запуск после `2500 ms` и
-одноразовый fallback alarm на `10000 ms`.
+Core-путь сохранён:
 
-Cold boot core recovery remains limited to Mapper/Projectivy. After successful
-core cold boot, Restorer asynchronously restores v2RayTun VPN as a non-blocking
-post-boot step. Этот шаг запускается только после `SESSION FINISH` и не задерживает
-Projectivy. TorrServe, first-run setup, STR cover и многофазный STR reset в
-cold-boot ветку не входят.
+```text
+MAIN/LAUNCHER -> BOOT_PENDING -> EARLY_BOOT (2500 ms)
+-> Button Mapper + Projectivy -> Projectivy final launch -> core SUCCESS
+```
+
+Direct Boot использует `LOCKED_BOOT_COMPLETED`, `BOOT_COUNT`, Device Protected
+Storage и резервный одноразовый alarm на `10000 ms`. `BOOT_COMPLETED` остаётся
+вторым системным событием.
+
+Необязательное восстановление запускается отдельным асинхронным worker только
+когда одновременно выполнены оба условия:
+
+```text
+coreBootSuccess=true
+android.intent.action.BOOT_COMPLETED получен
+```
+
+Порядок этих событий не важен. Маркер `lastPostBootOptionalBootCount` записывается
+до запуска worker, поэтому на один `BOOT_COUNT` возможно не более одного запуска.
+Worker не задерживает Projectivy и не меняет уже записанный core `SESSION FINISH`.
+
+В `POST_BOOT_OPTIONAL_RECOVERY`:
+
+- TorrServe: при наличии пакета и `GlobalTorrService` компонент аккуратно
+  добавляется к текущему raw-списку `enabled_accessibility_services`;
+- v2RayTun: при наличии пакета и `WidgetProvider1x1` переиспользуется
+  существующий `V2RayVpnAssist`.
+
+Для TorrServe не выполняются full reset, Activity, custom broadcast или unstop.
+Существующие Xiaomi и сторонние Accessibility entries, их написание и порядок
+сохраняются. Уже существующий TorrServe token не дублируется.
 
 ## STR
 
-После определения `isInteractive=true` приложение ждёт `500 ms`, невидимо
-снимает stopped-state с Button Mapper и Projectivy, затем выполняет:
+Проверенная последовательность и тайминги не изменены:
 
 ```text
-ALL INITIAL  2500 ms  (Button Mapper + Projectivy)
-BASE         1500 ms  (без управляемых targets)
-MAPPER       2500 ms  (Button Mapper)
-ALL FINAL    1500 ms  (Button Mapper + Projectivy + TorrServe)
-final Projectivy launch
+interactive settle  500 ms
+ALL_INITIAL         2500 ms
+BASE                1500 ms
+MAPPER              2500 ms
+ALL_FINAL           1500 ms
+Projectivy final launch
 ```
 
-Чужие Accessibility entries сохраняются в исходном raw-виде и порядке. Если
-TorrServe или его `GlobalTorrService` отсутствует, target не добавляется и
-основное восстановление Button Mapper/Projectivy не считается ошибочным.
+Сохранены чёрный `RecoveryCover`, invisible unstop Button Mapper/Projectivy,
+TorrServe только в `ALL_FINAL`, параллельный `V2RayVpnAssist` и одна conservative
+retry при измеримой core-ошибке. Если TorrServe отсутствует, `ALL_FINAL` содержит
+только core targets, а STR продолжается штатно.
 
-При измеримой ошибке допускается одна повторная попытка с паузой `1000 ms` и
-профилем `4000 / 3000 / 3000 / 3000 ms`. Всего не более двух attempts.
+## v2RayTun
 
-## Button Mapper и Projectivy
-
-Для invisible unstop используются explicit broadcast с
-`FLAG_INCLUDE_STOPPED_PACKAGES`, проверкой `ApplicationInfo.FLAG_STOPPED`, poll
-`200 ms` и timeout `3000 ms`.
-
-- Button Mapper: `flar2.homebutton/a.s`, затем `flar2.homebutton/a.r`.
-- Projectivy: `com.spocky.projengmenu/.services.StartUpBootReceiver`.
-
-Activity соответствующего приложения используется только как emergency fallback.
-
-## TorrServe
-
-STR проверяет пакет `ru.yourok.torrserve` и AccessibilityService:
+Проверяются пакет `com.v2raytun.android` и receiver:
 
 ```text
-ru.yourok.torrserve/ru.yourok.torrserve.server.local.services.GlobalTorrService
+com.v2raytun.android/.receiver.WidgetProvider1x1
 ```
 
-Target появляется только в `ALL FINAL`. Restorer не открывает TorrServe Activity,
-не вызывает закрытый `BCReceiver` и не выполняет отдельный unstop.
-
-## v2RayTun VPN assist
-
-VPN helper используется параллельно Accessibility recovery в STR, а при cold boot
-запускается асинхронно только после успешного core и Projectivy final launch. Для
-`ConnectivityManager` всегда используется application context Restorer.
-
-При `SecurityException` определение VPN повторяется до трёх раз с паузой `100 ms`.
-Если после retries состояние остаётся `UNKNOWN`, widget trigger разрешён только
-когда повторный readback подтверждает `FLAG_STOPPED=true`. Для `stopped=false`
-blind toggle запрещён.
-
-Trigger не изменён и отправляется не более одного раза за invocation/session:
+Сохраняется существующий trigger:
 
 ```text
-action:    com.v2raytun.android.action.widget.click
-component: com.v2raytun.android/.receiver.WidgetProvider1x1
-flag:      FLAG_INCLUDE_STOPPED_PACKAGES
+action: com.v2raytun.android.action.widget.click
+flag:   Intent.FLAG_INCLUDE_STOPPED_PACKAGES
 ```
 
-Для работающего процесса без VPN сохраняется grace `2000 ms`. После trigger
-выполняется advisory poll `250 ms` с timeout `5000 ms`; helper не задерживает
-final Projectivy.
+VPN определяется через `ConnectivityManager` application context Restorer. При
+`SecurityException` выполняются три попытки с паузой `100 ms`. Сохраняются grace
+`2000 ms`, poll `250 ms`, timeout `5000 ms` и максимум один widget trigger.
+`stopped=false + VPN=UNKNOWN` никогда не приводит к blind toggle.
 
-## Диагностика
+## Пользовательский экран
 
-```bash
-adb shell settings get secure enabled_accessibility_services
-adb shell settings get secure accessibility_enabled
-adb shell dumpsys accessibility
-adb shell dumpsys connectivity
-adb shell "logcat -d | grep -iE 'MiTVRestorer|accessibilityrestorer|AndroidRuntime'"
-```
+`MainActivity` остаётся единственным `MAIN/LAUNCHER` и `LEANBACK_LAUNCHER`, так
+как Xiaomi использует этот entry для cold boot. Сначала выполняется существующая
+проверка boot/STR/recovery-состояния. Только при интерактивном запуске без
+`BOOT_PENDING`, STR/wake-перехода и активной recovery-сессии MainActivity открывает
+`ControlActivity` и завершается без cover, reset и принудительного Projectivy.
 
-`execution=COMPLETED` означает выполнение доступных приложению операций, но не
-доказывает реальный binding. Bound/Binding/Crashed проверяются через `dumpsys`.
+`ControlActivity` показывает core-компоненты, необязательные TorrServe/v2RayTun,
+состояние `WRITE_SECURE_SETTINGS`, диагностику и кнопку «Восстановить сейчас».
+Отсутствие optional packages не блокирует завершение первичной настройки.
 
 ## Разрешения
 
-Manifest содержит только:
+Manifest содержит ровно три разрешения:
 
 - `android.permission.RECEIVE_BOOT_COMPLETED`
 - `android.permission.WRITE_SECURE_SETTINGS`
 - `android.permission.ACCESS_NETWORK_STATE`
 
-`INTERNET`, постоянный Service, WorkManager, JobScheduler и repeating alarm не
-используются.
+Нет `INTERNET`, `WRITE_SETTINGS`, `WAKE_LOCK`, Android Service/ForegroundService,
+WorkManager, JobScheduler или repeating alarm.
 
 ## Сборка
 
-Используется официальный Android toolchain: `aapt2`, `javac`, `D8`, `zipalign`,
-`apksigner`. Signing key в исходники не входит.
+Используется официальный toolchain: `aapt2`, `javac`, D8, `zipalign`,
+`apksigner`. Signing key в Source ZIP и deliverables не включён.
 
 ```powershell
-$env:MITV_RESTORER_KEYSTORE_PASSWORD = '<password>'
-$env:MITV_RESTORER_KEY_ALIAS = '<alias>'
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 `
   -JavaHome '<jdk17>' `
   -AndroidSdkRoot '<android-sdk>' `
-  -Keystore '<existing-restorer-keystore>'
+  -Keystore '<existing-restorer-keystore>' `
+  -KeystorePassword '<password>' `
+  -KeyAlias '<alias>'
 ```
 
-## Ограничения
+## Ограничения проверки
 
-- Новый APK `versionCode 11` статически проверен, но его post-boot VPN шаг ещё не
-  проверен физическим cold boot на телевизоре.
-- APK не имеет аналога `dumpsys accessibility` и не подтверждает Bound/Crashed.
-- Любой уже активный VPN transport предотвращает v2RayTun toggle.
-- Invisible receiver и service components зависят от версий целевых приложений.
+APK `versionCode 12` собран и статически проверен, но физические cold boot,
+ручное открытие UI и STR regression должен выполнить пользователь на телевизоре.
+Приложение не может заменить проверку Bound/Binding/Crashed через `dumpsys`.

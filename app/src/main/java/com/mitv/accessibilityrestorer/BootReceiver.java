@@ -28,6 +28,9 @@ public final class BootReceiver extends BroadcastReceiver {
 
         Context appContext = DirectBootContext.get(context);
         int currentBootCount = BootSessionState.currentBootCount(appContext);
+        if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
+            PostBootOptionalRecovery.onBootCompleted(appContext, currentBootCount);
+        }
         if (currentBootCount >= 0
                 && RecoveryState.isBootCompleted(appContext, currentBootCount)) {
             Log.i(AccessibilityRestorer.LOG_TAG,

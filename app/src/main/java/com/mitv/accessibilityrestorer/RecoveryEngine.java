@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 final class RecoveryEngine {
     static final String VERSION_NAME = "4.0.0";
-    static final int VERSION_CODE = 11;
+    static final int VERSION_CODE = 12;
 
     static final long STR_INTERACTIVE_SETTLE_MS = 500L;
     static final long EARLY_BOOT_SETTLE_MS = 2_500L;
@@ -288,12 +288,8 @@ final class RecoveryEngine {
                         + ", bootMarked=" + bootMarked
                         + ", durationMs=" + (SystemClock.elapsedRealtime() - started));
         if (fullSuccess) {
-            Log.i(AccessibilityRestorer.LOG_TAG,
-                    "COLD BOOT POST VPN assist scheduled"
-                            + ", session=" + bootSessionId
-                            + ", source=COLD_BOOT_POST_VPN");
-            V2RayVpnAssist.start(
-                    appContext, bootSessionId, "COLD_BOOT_POST_VPN");
+            PostBootOptionalRecovery.maybeStartPostBootOptionalRecovery(
+                    appContext, expectedBootCount);
         }
         return fullSuccess;
     }

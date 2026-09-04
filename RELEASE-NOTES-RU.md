@@ -1,52 +1,57 @@
 # MiTV Accessibility Restorer 4.0.0
 
-Финальная локальная кандидатная сборка для Xiaomi Mi TV S75 / MiTV-MFTR0 с
-MiTV OS 2.8.1712 / Android 11.
+Финальная локальная кандидатная сборка `versionCode 12` для Xiaomi Mi TV S75,
+MiTV OS 2.8.1712, Android 11.
 
-## Изменения
+## Исправления
 
-- Исправлено восстановление v2RayTun после подтверждённого Xiaomi
-  `ConnectivityManager` `SecurityException`.
-- `ConnectivityManager` теперь всегда получается от application context пакета
-  `com.mitv.accessibilityrestorer`.
-- При `SecurityException` выполняется максимум три попытки с паузой `100 ms`.
-- Если VPN остаётся `UNKNOWN`, widget trigger разрешён только после повторного
-  подтверждения `FLAG_STOPPED=true`; для `stopped=false` blind toggle запрещён.
-- Сохранены один trigger за STR, grace `2000 ms`, poll `250 ms` и timeout
-  `5000 ms`.
-- После успешного core cold boot существующий `V2RayVpnAssist` теперь запускается
-  отдельным асинхронным post-boot шагом. Projectivy и результат core не ждут VPN.
-- Добавлен first-run экран для ТВ-пульта с проверкой основных и необязательных
-  компонентов, разрешения и внутренним маркером `setup_completed`.
-- Добавлен `INSTALL.cmd`: установка, выдача/readback `WRITE_SECURE_SETTINGS` и
-  открытие setup UI без автоматического uninstall.
-- Стандартная установка больше не записывает `start_3rd_app`; advisory readback
-  внутри STR оставлен и не считается ошибкой.
+- Cold-boot восстановление v2RayTun больше не запускается слишком рано сразу
+  после EARLY_BOOT core.
+- Добавлен idempotent gate: optional worker запускается только после успешного
+  core boot и получения Android `BOOT_COMPLETED`, независимо от порядка событий.
+- Persistent и in-memory маркеры разрешают не более одного optional worker на
+  конкретный `BOOT_COUNT`.
+- После cold boot TorrServe получает аккуратный append `GlobalTorrService` в
+  текущий raw `enabled_accessibility_services`. Системные и сторонние entries не
+  удаляются, не переупорядочиваются и не нормализуются.
+- Перед optional-операциями проверяются package и нужный component. Результаты
+  `SKIPPED_NOT_INSTALLED` и `SKIPPED_COMPONENT_UNAVAILABLE` являются advisory.
+- Ошибки TorrServe и v2RayTun изолированы друг от друга и не меняют core success.
+- Обычное «Открыть» после завершённой загрузки теперь ведёт из `MainActivity` в
+  `ControlActivity` без cover/recovery/Projectivy.
+- First Run UI показывает наличие `WidgetProvider1x1` v2RayTun, но optional
+  приложения по-прежнему не блокируют завершение настройки.
 
 ## Сохранённое поведение
 
-- Accelerated core cold boot не изменён; post-boot VPN запускается только после
-  его успешного `SESSION FINISH`.
-- Smooth STR сохраняет профиль `500 + 2500 + 1500 + 2500 + 1500 ms` и чёрный
-  recovery cover.
-- Button Mapper и Projectivy восстанавливаются прежним способом.
-- TorrServe Accessibility добавляется только в `ALL FINAL`.
-- Xiaomi tvhome остаётся fallback.
+- Package, signing key и `versionName 4.0.0` не изменены.
+- Direct Boot, `LOCKED_BOOT_COMPLETED`, `BOOT_COUNT`, EARLY_BOOT `2500 ms`,
+  одноразовый fallback alarm `10000 ms` и core Mapper/Projectivy не изменены.
+- `MainActivity` остаётся `MAIN/LAUNCHER` и `LEANBACK_LAUNCHER`.
+- STR sequence и профиль `500 + 2500 + 1500 + 2500 + 1500 ms` не изменены.
+- TorrServe остаётся только в `ALL_FINAL` для STR.
+- Существующий `V2RayVpnAssist` переиспользуется без второго VPN-алгоритма:
+  3 retries по `100 ms`, grace `2000 ms`, poll `250 ms`, timeout `5000 ms`,
+  не более одного widget trigger и запрет blind toggle при
+  `stopped=false + VPN=UNKNOWN`.
+- `start_3rd_app` остаётся read-only advisory и стандартной установкой не
+  записывается.
 
 ## Совместимость
 
-- Package: `com.mitv.accessibilityrestorer`
-- Version: `4.0.0` (`versionCode 11`)
-- minSdk: 21
-- targetSdk: 28
-- compileSdk: 35
+- package: `com.mitv.accessibilityrestorer`
+- versionName: `4.0.0`
+- versionCode: `12`
+- minSdk: `21`
+- targetSdk: `28`
+- compileSdk: `35`
 
-APK подписан прежним сертификатом и поддерживает `adb install -r` с версиями,
-подписанными тем же ключом.
+APK подписан прежним сертификатом, поэтому поддерживает `adb install -r` поверх
+предыдущих сборок с тем же ключом.
 
-## Проверка
+## Проверка и публикация
 
-APK проходит локальную статическую проверку стандартным Android toolchain. Core
-cold boot и STR ранее проверены на ТВ на `versionCode 10`; новый post-boot VPN шаг
-в `versionCode 11` ещё должен пройти физический cold-boot test.
-Публикация GitHub Release отложена до отдельного разрешения после regression test.
+APK прошёл локальную production-сборку, проверку подписи/выравнивания/Manifest и
+полный `dexdump`. Физические cold boot, manual UI и STR regression для
+`versionCode 12` ещё должен выполнить пользователь. GitHub Release до этого не
+публикуется.

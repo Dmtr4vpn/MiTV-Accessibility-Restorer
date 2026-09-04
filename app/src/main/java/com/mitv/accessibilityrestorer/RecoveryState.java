@@ -115,6 +115,15 @@ final class RecoveryState {
                 && preferences.getInt(KEY_LAST_BOOT_COUNT, Integer.MIN_VALUE) == bootCount;
     }
 
+    static synchronized boolean hasActiveSession(Context context) {
+        SharedPreferences preferences = preferences(DirectBootContext.get(context));
+        String runningSession = preferences.getString(KEY_RUNNING_SESSION, null);
+        long runningSince = preferences.getLong(KEY_RUNNING_SINCE, 0L);
+        long age = runningSince > 0L
+                ? SystemClock.elapsedRealtime() - runningSince : Long.MAX_VALUE;
+        return runningSession != null && age >= 0L && age < STALE_RUNNING_SESSION_MS;
+    }
+
     static synchronized StartResult tryStart(
             Context context, String trigger, boolean bypassCooldown) {
         SharedPreferences preferences = preferences(DirectBootContext.get(context));

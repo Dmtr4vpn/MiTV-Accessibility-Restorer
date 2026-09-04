@@ -135,7 +135,8 @@ public final class ControlActivity extends Activity {
                         + ", mainComponentsReady=" + snapshot.mainComponentsReady
                         + ", torrServePackage=" + snapshot.torrServePackage
                         + ", torrServeService=" + snapshot.torrServeService
-                        + ", v2RayPackage=" + snapshot.v2RayPackage);
+                        + ", v2RayPackage=" + snapshot.v2RayPackage
+                        + ", v2RayComponent=" + snapshot.v2RayComponent);
         refreshStatus();
     }
 
@@ -183,7 +184,8 @@ public final class ControlActivity extends Activity {
                 snapshot.projectivyService);
         appendOptionalComponent(
                 text, "TorrServe", snapshot.torrServePackage, snapshot.torrServeService);
-        appendOptionalPackage(text, "v2RayTun", snapshot.v2RayPackage);
+        appendOptionalReceiver(
+                text, "v2RayTun", snapshot.v2RayPackage, snapshot.v2RayComponent);
         text.append('\n');
         text.append(snapshot.secureSettingsGranted ? "✓ " : "✗ ")
                 .append("WRITE_SECURE_SETTINGS ")
@@ -283,6 +285,18 @@ public final class ControlActivity extends Activity {
                 .append(label)
                 .append(packageFound ? " найден" : " не установлен")
                 .append(" (необязательно)\n");
+    }
+
+    private static void appendOptionalReceiver(
+            StringBuilder text, String label, boolean packageFound, boolean receiverFound) {
+        if (packageFound && receiverFound) {
+            text.append("✓ ").append(label).append(" найден (необязательно)\n");
+        } else if (packageFound) {
+            text.append("○ ").append(label)
+                    .append(": WidgetProvider не найден (необязательно)\n");
+        } else {
+            appendOptionalPackage(text, label, false);
+        }
     }
 
     private Button createButton(String label) {

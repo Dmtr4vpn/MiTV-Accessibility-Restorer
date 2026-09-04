@@ -31,6 +31,8 @@ final class SetupStatus {
                 && accessibilityServiceExists(
                 packageManager, TorrServeTarget.ACCESSIBILITY_SERVICE);
         boolean v2RayPackage = packageExists(packageManager, V2RayVpnAssist.PACKAGE_NAME);
+        boolean v2RayComponent = v2RayPackage
+                && V2RayVpnAssist.isWidgetReceiverAvailable(appContext);
         boolean secureSettingsGranted = hasSecureSettingsPermission(appContext);
         boolean markedComplete = SetupState.isMarkedComplete(appContext);
 
@@ -43,6 +45,7 @@ final class SetupStatus {
                 torrServePackage,
                 torrServeService,
                 v2RayPackage,
+                v2RayComponent,
                 markedComplete);
     }
 
@@ -89,6 +92,7 @@ final class SetupStatus {
         final boolean torrServePackage;
         final boolean torrServeService;
         final boolean v2RayPackage;
+        final boolean v2RayComponent;
         final boolean markedComplete;
         final boolean mainComponentsReady;
         final boolean setupComplete;
@@ -102,6 +106,7 @@ final class SetupStatus {
                 boolean torrServePackage,
                 boolean torrServeService,
                 boolean v2RayPackage,
+                boolean v2RayComponent,
                 boolean markedComplete) {
             this.secureSettingsGranted = secureSettingsGranted;
             this.mapperPackage = mapperPackage;
@@ -111,6 +116,7 @@ final class SetupStatus {
             this.torrServePackage = torrServePackage;
             this.torrServeService = torrServeService;
             this.v2RayPackage = v2RayPackage;
+            this.v2RayComponent = v2RayComponent;
             this.markedComplete = markedComplete;
             this.mainComponentsReady = mapperPackage
                     && mapperService

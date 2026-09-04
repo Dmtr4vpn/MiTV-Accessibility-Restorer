@@ -3,6 +3,7 @@ package com.mitv.accessibilityrestorer;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
@@ -11,6 +12,7 @@ import android.net.NetworkCapabilities;
 import android.os.SystemClock;
 import android.util.Log;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 final class V2RayVpnAssist {
@@ -42,7 +44,7 @@ final class V2RayVpnAssist {
         final Handle handle = new Handle(SystemClock.elapsedRealtime());
         if (source != null) {
             Log.i(AccessibilityRestorer.LOG_TAG,
-                    "COLD BOOT POST VPN assist started"
+                    "V2RAY async assist started"
                             + ", session=" + sessionId
                             + ", source=" + source);
         }
@@ -106,9 +108,15 @@ final class V2RayVpnAssist {
         }
         if (!packageState.installed) {
             Log.i(AccessibilityRestorer.LOG_TAG,
-                    "V2RAY VPN trigger decision=SKIPPED_PACKAGE_MISSING");
+                    "V2RAY VPN trigger decision=SKIPPED_NOT_INSTALLED");
             return result(
-                    Status.SKIPPED_PACKAGE_MISSING, false, false, started);
+                    Status.SKIPPED_NOT_INSTALLED, false, false, started);
+        }
+        if (!isWidgetReceiverAvailable(context)) {
+            Log.i(AccessibilityRestorer.LOG_TAG,
+                    "V2RAY VPN trigger decision=SKIPPED_COMPONENT_UNAVAILABLE");
+            return result(
+                    Status.SKIPPED_COMPONENT_UNAVAILABLE, false, false, started);
         }
 
         Log.i(AccessibilityRestorer.LOG_TAG,
@@ -289,6 +297,22 @@ final class V2RayVpnAssist {
         }
     }
 
+    static boolean isWidgetReceiverAvailable(Context context) {
+        try {
+            ActivityInfo info = context.getPackageManager().getReceiverInfo(
+                    WIDGET_RECEIVER, PackageManager.GET_META_DATA);
+            return info != null;
+        } catch (PackageManager.NameNotFoundException exception) {
+            return false;
+        } catch (RuntimeException exception) {
+            Log.e(AccessibilityRestorer.LOG_TAG,
+                    "V2RAY widget receiver check failed component="
+                            + WIDGET_RECEIVER.flattenToString(),
+                    exception);
+            return false;
+        }
+    }
+
     private static VpnState readVpnState(Context context) {
         Context appContext = applicationContext(context);
         for (int attempt = 1; attempt <= VPN_READ_MAX_ATTEMPTS; attempt++) {
@@ -424,7 +448,8 @@ final class V2RayVpnAssist {
         CONNECTED,
         TIMEOUT,
         ALREADY_ACTIVE,
-        SKIPPED_PACKAGE_MISSING,
+        SKIPPED_NOT_INSTALLED,
+        SKIPPED_COMPONENT_UNAVAILABLE,
         SKIPPED_ALREADY_RUNNING_GRACE,
         TRIGGER_FAILED
     }
@@ -432,6 +457,7 @@ final class V2RayVpnAssist {
     static final class Handle {
         private final AtomicReference<Result> result =
                 new AtomicReference<Result>();
+        private final CountDownLatch completed = new CountDownLatch(1);
         private final long startedElapsed;
 
         Handle(long startedElapsed) {
@@ -450,8 +476,21 @@ final class V2RayVpnAssist {
                     SystemClock.elapsedRealtime() - startedElapsed);
         }
 
+        Result awaitCompletion() {
+            try {
+                completed.await();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                Log.e(AccessibilityRestorer.LOG_TAG,
+                        "V2RAY wait for completion interrupted",
+                        exception);
+            }
+            return snapshot();
+        }
+
         void complete(Result completed, String sessionId, String source) {
             result.set(completed);
+            this.completed.countDown();
             Log.i(AccessibilityRestorer.LOG_TAG,
                     "V2RAY final vpnAssist status=" + completed.status
                             + ", vpnTriggerSent=" + completed.triggerSent
@@ -460,7 +499,7 @@ final class V2RayVpnAssist {
                             + ", session=" + sessionId);
             if (source != null) {
                 Log.i(AccessibilityRestorer.LOG_TAG,
-                        "COLD BOOT POST VPN FINISH"
+                        "V2RAY async assist FINISH"
                                 + ", source=" + source
                                 + ", session=" + sessionId
                                 + ", vpnAssist=" + completed.status
