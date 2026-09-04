@@ -12,9 +12,6 @@ import android.util.Log;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 final class RecoveryEngine {
-    static final String VERSION_NAME = "4.0.0";
-    static final int VERSION_CODE = 12;
-
     static final long STR_INTERACTIVE_SETTLE_MS = 500L;
     static final long EARLY_BOOT_SETTLE_MS = 2_500L;
     static final long INTERACTIVE_POLL_MS = 1_000L;
@@ -575,13 +572,14 @@ final class RecoveryEngine {
     }
 
     private static void logSessionStart(Context context, String sessionId, String trigger) {
+        AppVersion.Info version = AppVersion.read(context);
         boolean hasSecureSettings = context.getPackageManager().checkPermission(
                 android.Manifest.permission.WRITE_SECURE_SETTINGS,
                 context.getPackageName()) == PackageManager.PERMISSION_GRANTED;
         Log.i(AccessibilityRestorer.LOG_TAG,
                 "SESSION START session=" + sessionId
-                        + ", versionName=" + VERSION_NAME
-                        + ", versionCode=" + VERSION_CODE
+                        + ", versionName=" + version.name
+                        + ", versionCode=" + version.code
                         + ", trigger=" + trigger
                         + ", boot_count=" + BootSessionState.currentBootCount(context)
                         + ", elapsedRealtime=" + SystemClock.elapsedRealtime()

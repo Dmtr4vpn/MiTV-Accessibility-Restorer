@@ -1,7 +1,7 @@
-MiTV Accessibility Restorer 4.0.0
-=================================
+FOX MiTV Restorer 4.0.0
+=======================
 
-Версия: 4.0.0 (versionCode 13)
+Версия: 4.0.0 (versionCode 14)
 Package: com.mitv.accessibilityrestorer
 
 СТАНДАРТНАЯ УСТАНОВКА
@@ -96,6 +96,9 @@ adb shell dumpsys connectivity
 adb shell ps -A | grep -iE "projengmenu|homebutton|torrserve|v2ray"
 adb shell "logcat -d | grep -iE 'MiTVRestorer|accessibilityrestorer|AndroidRuntime'"
 
+Визуально обязательно: BLACK -> Projectivy. Окно, название, иконка или banner
+FOX MiTV Restorer не должны появляться даже кратковременно.
+
 Ожидаемый core-путь:
 
 BOOT_COUNT changed
@@ -138,7 +141,7 @@ ACCEPTANCE: РУЧНОЕ ОТКРЫТИЕ
 
 После завершённой загрузки откройте:
 
-Настройки -> Все приложения -> MiTV Accessibility Restorer -> Открыть
+В Android TV/Projectivy выберите карточку FOX MiTV Restorer.
 
 Проверьте системное разрешение entry points:
 
@@ -150,11 +153,12 @@ adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.
 
 com.mitv.accessibilityrestorer/.MainActivity
 com.mitv.accessibilityrestorer/.ControlActivity
-com.mitv.accessibilityrestorer/.ControlActivity
+No activity found / NO MATCH
 
-Настройки -> Все приложения -> MiTV Accessibility Restorer -> Открыть должны
-показать ControlActivity без RecoveryCover и recovery. Карточка Restorer в Android
-TV/Projectivy также должна открыть ControlActivity через LEANBACK_LAUNCHER.
+Карточка FOX MiTV Restorer в Android TV/Projectivy должна открыть ControlActivity
+без RecoveryCover и recovery. Допустим также явный диагностический запуск:
+
+adb shell am start -n com.mitv.accessibilityrestorer/.ControlActivity
 
 В MainActivity не должно быть строк:
 
@@ -168,6 +172,9 @@ ACCEPTANCE: STR REGRESSION
 После cold-boot и manual-UI тестов выполните обычный цикл:
 
 Sleep -> 30 секунд -> Wake
+
+Визуально обязательно: BLACK -> Projectivy. ControlActivity и любой branded UI
+Restorer появляться не должны.
 
 Ожидается прежний путь:
 
@@ -197,9 +204,16 @@ adb shell dumpsys accessibility
 adb shell dumpsys connectivity
 adb shell "logcat -d | grep -iE 'STR TIMING|STR RESET|V2RAY|MiTVRestorer|AndroidRuntime'"
 
+Проверьте версию в dumpsys и SESSION START:
+
+adb shell dumpsys package com.mitv.accessibilityrestorer | grep -i versionCode
+adb shell "logcat -d | grep -i 'MiTVRestorer.*SESSION START'"
+
+Оба результата должны содержать versionCode=14.
+
 ФИЗИЧЕСКАЯ ПРОВЕРКА
 --------------------
 
-Codex не подключался к реальному телевизору. APK versionCode 13 прошёл сборку и
+Codex не подключался к реальному телевизору. APK versionCode 14 прошёл сборку и
 статическую проверку, но cold boot, manual UI и STR regression должны быть
 подтверждены на Xiaomi Mi TV S75 пользователем до публикации GitHub Release.

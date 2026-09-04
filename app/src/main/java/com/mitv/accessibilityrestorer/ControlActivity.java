@@ -41,7 +41,7 @@ public final class ControlActivity extends Activity {
         content.setPadding(padding, padding, padding, padding);
 
         TextView title = new TextView(this);
-        title.setText("MiTV Accessibility Restorer");
+        title.setText(getApplicationInfo().loadLabel(getPackageManager()));
         title.setTextColor(Color.WHITE);
         title.setTextSize(28f);
         content.addView(title, matchWrap());
@@ -171,10 +171,11 @@ public final class ControlActivity extends Activity {
                 ? "Настройка завершена" : "Первичная настройка");
 
         StringBuilder text = new StringBuilder();
+        AppVersion.Info version = AppVersion.read(this);
         text.append("Версия: ")
-                .append(RecoveryEngine.VERSION_NAME)
+                .append(version.name)
                 .append(" (")
-                .append(RecoveryEngine.VERSION_CODE)
+                .append(version.code)
                 .append(")\n\n");
         appendMainComponent(
                 text, "Button Mapper", snapshot.mapperPackage, snapshot.mapperService);

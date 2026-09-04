@@ -1,48 +1,48 @@
-MiTV Accessibility Restorer 4.0.0 - STATIC VERIFICATION
-=======================================================
+FOX MiTV Restorer 4.0.0 - STATIC VERIFICATION
+=============================================
 
 Дата локальной проверки: 2026-09-05
+Base commit: 4f8e540e80b1a52ffbe2553b9a2c02ba1605b981
 
-ВАЖНО
-------
+ГРАНИЦЫ ПРОВЕРКИ
+----------------
 
-Пользователь физически подтвердил успешный cold boot сборки versionCode 12 на
-Xiaomi Mi TV S75, MiTV OS 2.8.1712, Android 11: core recovery, Projectivy,
-TorrServe и v2RayTun завершились успешно.
-
-VersionCode 13 исправляет только маршрутизацию пользовательского запуска и ещё
-не проверялся на физическом телевизоре. Для него обязательны три acceptance-
-теста: cold boot, STR Sleep -> Wake и User Open. GitHub Release не опубликован.
+VersionCode 14 собран и статически проверен без подключённого телевизора.
+Реальные cold boot, STR и Android TV user launch должны быть выполнены на Xiaomi
+Mi TV S75. Статическая проверка подтверждает чёрные automatic Activity themes и
+отсутствие automatic ControlActivity launch, но не заменяет визуальный тест
+BLACK -> Projectivy на физическом ТВ.
 
 ИДЕНТИЧНОСТЬ СБОРКИ
 -------------------
 
+application label: FOX MiTV Restorer
 package: com.mitv.accessibilityrestorer
 versionName: 4.0.0
-versionCode: 13
+versionCode: 14
 minSdkVersion: 21
 targetSdkVersion: 28
 compileSdkVersion: 35
 
 APK:
 MiTVAccessibilityRestorer-4.0.0.apk
-size: 1418118 bytes
-SHA-256: 25E7D5AD354A63ABE2EB51B468B13C0A1A9496ED01A19E2F3E1F33D71CDC4915
+size: 1401735 bytes
+SHA-256: A597DA01B00BBA60CBB286BACA57C4B2FA4ADAFDD70FDF076E43C538E74979C9
 
 Source ZIP:
 MiTVAccessibilityRestorer-4.0.0-sources.zip
-size: 2206217 bytes
-SHA-256: EEDB8636A48886AE5E53C2E153C8F262AAA72E0CEF2054C85B4D44FB7488488D
+size: 2192689 bytes
+SHA-256: E88C0695785A39CBB3C025E5CA0CE188889E6CE09556A4F7F1087B00A1F1FDB7
 
 classes.dex из готового APK:
-size: 93888 bytes
-SHA-256: 97B1BD3CECCBA8E6CC27EDFA6F8D3BD42034BA5B8507FE2C794B5483BC14F51E
+size: 94732 bytes
+SHA-256: 17E615D0567A16BAC900930490E6700A7B0457687D81A52AE3CAA153535781B8
 
-INSTALL.cmd SHA-256:
+INSTALL.cmd SHA-256, без изменений:
 694B705930DFFAE7C675568741C8A5F1CB6EA50954892A28457321D8F5BE4F57
 
-СБОРКА
-------
+СБОРКА И ПОДПИСЬ
+----------------
 
 Использован официальный Android toolchain:
 
@@ -55,301 +55,335 @@ INSTALL.cmd SHA-256:
 - zipalign;
 - apksigner.
 
-Keystore, пароль и alias не включены в исходники, Source ZIP или deliverables.
-
-ПОДПИСЬ И ВЫРАВНИВАНИЕ
-----------------------
-
 apksigner verify --verbose --print-certs: SUCCESS
 
-Verified using v1 scheme: true
-Verified using v2 scheme: true
-Verified using v3 scheme: true
-Number of signers: 1
-Key algorithm: RSA, 2048 bits
+- v1: true;
+- v2: true;
+- v3: true;
+- signers: 1;
+- RSA: 2048 bits.
 
 Signing certificate SHA-256:
 646A700698CE0790D6B7F0396D8192E6A093544934E2F7F065F8726E0D3638F5
 
-Сертификат совпадает с предыдущей сборкой, поэтому доступно adb install -r.
+Сертификат совпадает с versionCode 13. adb install -r поддерживается.
+zipalign -c -v 4: SUCCESS.
 
-zipalign -c -v 4: Verification successful
-
-BINARY MANIFEST
----------------
-
-aapt2 dump badging и aapt2 dump xmltree подтвердили:
-
-- package=com.mitv.accessibilityrestorer;
-- versionName=4.0.0;
-- versionCode=13;
-- minSdkVersion=21;
-- targetSdkVersion=28;
-- compileSdkVersion=35.
-
-Ровно три uses-permission, без изменений:
-
-- android.permission.RECEIVE_BOOT_COMPLETED;
-- android.permission.WRITE_SECURE_SETTINGS;
-- android.permission.ACCESS_NETWORK_STATE.
-
-INTERNET, WRITE_SETTINGS, WAKE_LOCK, AUTO_START и FOREGROUND_SERVICE отсутствуют.
-Android Service/ForegroundService, WorkManager, JobScheduler и repeating alarm
-отсутствуют.
-
-Компоненты:
-
-- MainActivity: exported=true;
-- ControlActivity: exported=true;
-- RecoveryCoverActivity: exported=false;
-- BootReceiver: exported=true, directBootAware=true;
-- RestoreReceiver: exported=false, directBootAware=true.
-
-BootReceiver по-прежнему слушает LOCKED_BOOT_COMPLETED и BOOT_COMPLETED.
-
-INTENT ROUTING
---------------
-
-Упакованный binary Manifest содержит ровно следующие front-door filters:
+FINAL MANIFEST ROUTING
+----------------------
 
 MainActivity:
 
-<intent-filter>
-    <action android:name="android.intent.action.MAIN" />
-    <category android:name="android.intent.category.LAUNCHER" />
-</intent-filter>
+<activity
+    android:name=".MainActivity"
+    android:excludeFromRecents="true"
+    android:exported="true"
+    android:launchMode="singleTop"
+    android:theme="@style/Theme.Restorer.Trampoline">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent-filter>
+</activity>
 
 ControlActivity:
 
-<intent-filter>
-    <action android:name="android.intent.action.MAIN" />
-    <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-</intent-filter>
-<intent-filter>
-    <action android:name="android.intent.action.MAIN" />
-    <category android:name="android.intent.category.INFO" />
-</intent-filter>
+<activity
+    android:name=".ControlActivity"
+    android:banner="@drawable/restorer_banner"
+    android:exported="true"
+    android:label="@string/app_name">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+    </intent-filter>
+</activity>
 
-Статическое разрешение по source XML и упакованному Manifest:
+Source XML и packaged binary Manifest:
 
 - MAIN + LAUNCHER: PASS -> com.mitv.accessibilityrestorer/.MainActivity;
-- MAIN + LEANBACK_LAUNCHER: PASS -> com.mitv.accessibilityrestorer/.ControlActivity;
-- MAIN + INFO: PASS -> com.mitv.accessibilityrestorer/.ControlActivity;
-- ControlActivity с CATEGORY_LAUNCHER: отсутствует;
-- обычных MAIN/LAUNCHER entry в пакете: ровно один.
+- MAIN + LEANBACK_LAUNCHER: PASS ->
+  com.mitv.accessibilityrestorer/.ControlActivity;
+- MAIN + INFO: NO MATCH;
+- CATEGORY_INFO occurrences: 0;
+- ControlActivity CATEGORY_LAUNCHER: отсутствует;
+- обычных MAIN/LAUNCHER entry: ровно один.
 
-aapt2 dump badging отдельно вернул:
+aapt2 dump badging:
 
-launchable-activity: com.mitv.accessibilityrestorer.MainActivity
-leanback-launchable-activity: com.mitv.accessibilityrestorer.ControlActivity
+- launchable-activity: com.mitv.accessibilityrestorer.MainActivity;
+- leanback-launchable-activity:
+  com.mitv.accessibilityrestorer.ControlActivity;
+- ControlActivity label: FOX MiTV Restorer;
+- ControlActivity banner: res/drawable-nodpi-v4/restorer_banner.png.
 
-Фактические adb shell cmd package resolve-activity требуют подключённого ТВ и
-входят в physical User Open test ниже. В среде сборки устройство отсутствовало.
+Фактические adb shell cmd package resolve-activity требуют установленного APK и
+входят в physical acceptance test.
 
-MAINACTIVITY STR REGRESSION FIX
-------------------------------
+AUTOMATIC CONTROL ACTIVITY AUDIT
+--------------------------------
 
-MainActivity.java после исправления имеет тот же Git blob, что reference commit
-c9834bf0a1717a3c57012eab51644d2f4b9abb80:
+Полный поиск ControlActivity по source tree классифицирован:
 
-14e1dd84088f4659d26e8eaa6f6814b2c4a626b1
+1. AndroidManifest.xml: только LEANBACK_LAUNCHER user entry, разрешено.
+2. ControlActivity.java: объявление самой Activity, разрешено.
+3. INSTALL.cmd: явный component launch после установки, разрешено.
 
-Exact reference match: PASS
+В MainActivity, BootReceiver, RestoreReceiver, alarm/fallback, RecoveryEngine,
+STR callbacks, BOOT_COMPLETED и PostBootOptionalRecovery отсутствуют:
 
-Удалены:
-
-- поле strRecoveryRequired;
-- присваивания strRecoveryRequired=true;
-- runtime-проверка interactive/no active session для USER_UI;
+- new Intent(... ControlActivity.class);
+- startActivity(... ControlActivity ...);
+- USER_UI;
 - mode=USER_UI;
 - reason=no_recovery_required;
-- MAIN ROUTE -> ControlActivity;
-- routeToControlActivity(...);
-- startActivity(new Intent(this, ControlActivity.class));
-- finish() из этого UI-route.
+- routeToControlActivity().
 
-javap по собранному MainActivity:
+dexdump -d также подтвердил:
 
-- ControlActivity references: 0;
-- USER_UI strings: 0;
-- no_recovery_required strings: 0;
-- routeToControlActivity methods: 0.
+- ControlActivity constructor references из recovery code: 0;
+- USER_UI/no_recovery_required/MAIN ROUTE strings: 0;
+- android.intent.category.INFO strings: 0.
 
-MainActivity снова является только recovery/bootstrap activity. BOOT_PENDING,
-EARLY_BOOT, STR_BOOT_COMPLETED, SCREEN_ON, IS_INTERACTIVE_POLL, RecoveryCover и
-session markers сохранены согласно reference commit.
+MAINACTIVITY RECOVERY-ONLY
+--------------------------
 
-НЕИЗМЕНЁННЫЙ COLD BOOT / OPTIONAL КОД
-------------------------------------
+MainActivity.java не изменён относительно base commit и точно совпадает с
+reference commit c9834bf0a1717a3c57012eab51644d2f4b9abb80.
 
-Git diff относительно последнего состояния versionCode 12 пуст для:
+Git blob:
+14e1dd84088f4659d26e8eaa6f6814b2c4a626b1
 
+Сохранены BOOT_PENDING, EARLY_BOOT, BOOT_FALLBACK, STR_BOOT_COMPLETED, SCREEN_ON,
+IS_INTERACTIVE_POLL, RecoveryCover и session markers.
+
+BLACK AUTOMATIC UI CONTRACT
+---------------------------
+
+Theme.Restorer.Trampoline packaged style подтверждает:
+
+- android:windowIsTranslucent=false;
+- android:windowBackground=@android:color/black;
+- android:colorBackground=@android:color/black;
+- android:colorAccent=@android:color/black;
+- android:statusBarColor=@android:color/black;
+- android:navigationBarColor=@android:color/black;
+- android:windowNoTitle=true;
+- android:windowDisablePreview=false;
+- android:windowFullscreen=true;
+- android:windowAnimationStyle=@null.
+
+RecoveryCoverActivity и Theme.Restorer.RecoveryCover не изменены: solid black,
+opaque, fullscreen, без logo/text/progress UI.
+
+Статический automatic cold boot UI contract: black MainActivity/RecoveryCover
+только, затем Projectivy. Статический automatic STR UI contract: black
+MainActivity/RecoveryCover только, затем Projectivy. Фактическое отсутствие даже
+краткого branded кадра является обязательным physical acceptance test.
+
+DIAGNOSTIC VERSION
+------------------
+
+Hardcoded RecoveryEngine VERSION_NAME/VERSION_CODE удалены.
+
+AppVersion.read(context) использует фактический PackageInfo:
+
+- PackageManager.getPackageInfo(context.getPackageName(), 0);
+- PackageInfo.versionName;
+- PackageInfo.getLongVersionCode() на API 28+;
+- PackageInfo.versionCode на старых API.
+
+ControlActivity и RecoveryEngine SESSION START используют один AppVersion helper.
+javap/dexdump подтвердили PackageInfo call и отсутствие hardcoded versionCode 12,
+13 или 14 в diagnostic code.
+
+Следовательно после установки этого APK:
+
+- dumpsys package -> versionCode=14;
+- SESSION START -> versionCode=14.
+
+Фактический logcat readback проверяется на ТВ.
+
+НЕИЗМЕНЁННЫЙ RECOVERY ENGINE
+----------------------------
+
+Относительно base commit полностью неизменны:
+
+- MainActivity.java;
 - BootReceiver.java;
 - RestoreReceiver.java;
 - BootSessionState.java;
 - AccessibilityRestorer.java;
 - DirectBootContext.java;
 - RecoveryState.java;
-- RecoveryEngine.java;
 - PostBootOptionalRecovery.java;
 - TorrServeTarget.java;
 - V2RayVpnAssist.java;
 - TargetUnstopper.java;
 - VendorStartApp.java.
 
-Сохранены без функциональных изменений:
+RecoveryEngine.java изменён только в diagnostic version logging: удалены две
+hardcoded version constants и добавлен вызов AppVersion.read(context). Recovery
+ветвления, порядок, writes, callbacks и timings не изменены.
+
+COLD BOOT
+---------
+
+Сохранены без изменений:
 
 - BOOT_COUNT и lastCompletedBootCount;
 - EARLY_BOOT_SETTLE_MS=2500;
-- одноразовый fallback alarm RESTORE_DELAY_MILLIS=10000;
+- fallback alarm RESTORE_DELAY_MILLIS=10000, одноразовый;
 - core Button Mapper + Projectivy recovery;
 - Projectivy final launch;
 - boot session marker;
-- gate coreBootSuccess=true + BOOT_COMPLETED_RECEIVED=true;
-- не более одного POST_BOOT_OPTIONAL_RECOVERY на BOOT_COUNT.
+- gate CORE_BOOT_SUCCESS + ANDROID_BOOT_COMPLETED_RECEIVED;
+- максимум один POST_BOOT_OPTIONAL_RECOVERY на BOOT_COUNT.
 
-TORRSERVE COLD BOOT
--------------------
+STR
+---
 
-TorrServeTarget.java и его вызов из PostBootOptionalRecovery.java не изменены.
-Сохраняются проверки package/component/permission, аккуратный append одного
-GlobalTorrService к исходному raw enabled_accessibility_services и статусы:
-
-- RECOVERED;
-- ALREADY_ENABLED;
-- SKIPPED_NOT_INSTALLED;
-- SKIPPED_COMPONENT_UNAVAILABLE;
-- FAILED.
-
-Существующие Accessibility entries не удаляются, не нормализуются, не сортируются
-и не меняют написание.
-
-V2RAY POST-BOOT
----------------
-
-V2RayVpnAssist.java и post-BOOT_COMPLETED вызов не изменены. Сохранены:
-
-- grace 2000 ms;
-- SecurityException retries: 3 по 100 ms;
-- SEND_ONCE;
-- SEND_ONCE_FALLBACK_STOPPED;
-- poll 250 ms;
-- timeout 5000 ms;
-- запрет blind toggle при stopped=false + VPN=UNKNOWN.
-
-STR SEQUENCE
-------------
-
-RecoveryEngine.java не изменён. Сохранены:
+Сохранены без изменений:
 
 - interactive settle: 500 ms;
 - ALL_INITIAL: 2500 ms;
 - BASE: 1500 ms;
 - MAPPER: 2500 ms;
 - ALL_FINAL: 1500 ms;
+- последовательность ALL -> BASE -> MAPPER -> ALL;
 - RecoveryCover;
-- Mapper invisible unstop;
-- Projectivy invisible unstop;
+- Mapper/Projectivy invisible recovery;
 - TorrServe только в ALL_FINAL;
 - V2RayVpnAssist;
 - Projectivy final launch.
 
-OPTIONAL INDEPENDENCE
----------------------
+TORRSERVE / V2RAY / OPTIONAL
+----------------------------
 
-TorrServe и v2RayTun не входят в prerequisite/core success. Сохранены:
+TorrServeTarget.java, PostBootOptionalRecovery.java и V2RayVpnAssist.java не
+изменены.
 
-- отсутствующий package -> SKIPPED_NOT_INSTALLED;
-- отсутствующий component -> SKIPPED_COMPONENT_UNAVAILABLE;
-- ошибка одного optional target не блокирует другой target;
-- optional status не меняет cold boot/STR core success.
+Сохранены:
+
+- raw append GlobalTorrService без full reset/normalization/reorder;
+- TorrServe SKIPPED_NOT_INSTALLED/SKIPPED_COMPONENT_UNAVAILABLE;
+- v2RayTun grace 2000 ms, poll 250 ms, timeout 5000 ms;
+- SecurityException retries;
+- SEND_ONCE и SEND_ONCE_FALLBACK_STOPPED;
+- максимум один v2Ray trigger/session;
+- optional failure не влияет на core success.
 
 START_3RD_APP
 -------------
 
 start_3rd_app остаётся read-only advisory. MISSING_UNARMED является нормальным
-состоянием. APK и INSTALL.cmd не записывают этот setting.
+состоянием. APK и неизменённый INSTALL.cmd не записывают этот setting.
+
+BRANDING
+--------
+
+Final application label: FOX MiTV Restorer.
+
+Launcher icon master:
+C:\Users\Belomytsev.D\Downloads\3.1.png
+
+Master properties:
+
+- PNG 1254x1254, строго 1:1;
+- SHA-256: F0BB94E761B18ADE921D0479171B9CD884A0BAA847F1502F3D7E2C3B5AF1BBC5;
+- не перерисован и не изменён;
+- использован только HighQualityBicubic downscale.
+
+Созданы и упакованы:
+
+- mdpi 48x48;
+- hdpi 72x72;
+- xhdpi 96x96;
+- xxhdpi 144x144;
+- xxxhdpi 192x192.
+
+mipmap-anydpi-v26, adaptive foreground/background и ic_launcher_round отсутствуют.
+Application icon reference: @mipmap/ic_launcher.
+
+Каждая извлечённая из APK launcher icon имеет требуемый размер и пиксельно точно
+совпадает с соответствующим source mipmap, созданным из 3.1.png.
+
+Packaged launcher icon verified against:
+C:\Users\Belomytsev.D\Downloads\3.1.png
+
+FOX banner source:
+C:\Users\Belomytsev.D\.codex\.chatgpt-projects\g-p-6a9633eaa4d8819186d705308ce0345d\MiTVAccessibilityRestorer-4.0.0\app\src\main\res\drawable-nodpi\restorer_banner.png
+
+Banner properties:
+
+- PNG 1280x720, строго 16:9;
+- SHA-256: 97A990D7C6E8028E3476F55B4EDCBBEF5FAC3CA30CC1E108A927FFDD2A5631F8;
+- содержит вертикальный FOX слева;
+- не изменён относительно base commit.
+
+Активные references:
+
+- application android:banner=@drawable/restorer_banner;
+- ControlActivity android:banner=@drawable/restorer_banner.
+
+Других active banner references нет. Извлечённый APK banner имеет 1280x720 и
+пиксельно точно совпадает с source FOX banner.
+
+Packaged Android TV banner verified as FOX banner.
 
 APK / DEX
 ---------
 
-APK содержит ровно один classes.dex. Его SHA-256 совпадает с непосредственным
+APK содержит один classes.dex. Его SHA-256 совпадает с непосредственным
 результатом официального D8.
 
-dexdump -f:
+dexdump -f/-d:
 
 - exit code: 0;
 - DEX version: 035;
-- class definitions: 62;
+- class definitions: 64;
+- disassembly lines: 15357;
 - parser/verifier errors: 0.
 
-В DEX найдены BootReceiver, RestoreReceiver, AccessibilityRestorer, MainActivity,
-ControlActivity, RecoveryEngine, RecoveryState, PostBootOptionalRecovery,
-TorrServeTarget и V2RayVpnAssist.
-
-ICON / ANDROID TV BANNER
-------------------------
-
-Новые графические ресурсы сохранены:
-
-- android:icon=@mipmap/ic_launcher;
-- пять density icon PNG: 48, 72, 96, 144 и 192 px;
-- android:banner=@drawable/restorer_banner;
-- drawable-nodpi/restorer_banner.png: 1280x720, строго 16:9;
-- banner содержит вертикальную надпись FOX слева, читаемую снизу вверх.
+Все обязательные классы, включая AppVersion, BootReceiver, RestoreReceiver,
+AccessibilityRestorer, MainActivity, ControlActivity, RecoveryEngine,
+PostBootOptionalRecovery, TorrServeTarget и V2RayVpnAssist, присутствуют.
 
 INSTALL.cmd
 -----------
 
-INSTALL.cmd не изменён. Сохранена versionCode-логика:
+INSTALL.cmd не изменён. Сохранены:
 
-- package отсутствует -> INSTALL;
-- installed < APK -> UPDATE через adb install -r;
-- installed = APK -> SKIP INSTALL;
-- installed > APK -> автоматический downgrade запрещён;
-- после update/skip проверяется WRITE_SECURE_SETTINGS и запускается явный
-  com.mitv.accessibilityrestorer/.ControlActivity.
+- package absent -> install;
+- installed < APK -> install -r;
+- installed == APK -> SKIP;
+- installed > APK -> no automatic downgrade;
+- WRITE_SECURE_SETTINGS grant/readback;
+- явный com.mitv.accessibilityrestorer/.ControlActivity launch.
 
 SOURCE ZIP
 ----------
 
-Source ZIP сформирован по белому списку:
+Source ZIP создан по белому списку:
 
-- files: 36;
-- app source/resources, build.ps1, INSTALL.cmd и документация присутствуют;
-- MainActivity reference semantics и Manifest versionCode 13 присутствуют;
-- текущие icon/banner присутствуют;
-- APK, keystore, SDK/JDK, .build, dist, .git и auth/tokens отсутствуют.
+- files: 37;
+- AppVersion.java, source/resources, build.ps1, INSTALL.cmd и документация есть;
+- master-derived icons и FOX banner есть;
+- APK, keystore, SDK/JDK, .build, dist, .git, auth/tokens отсутствуют.
 
-ФИЗИЧЕСКИЙ ACCEPTANCE TEST
---------------------------
+PHYSICAL ACCEPTANCE TESTS
+-------------------------
 
 До публикации выполнить только три теста.
 
-A. Cold boot:
+1. Cold boot: BLACK -> Projectivy; Mapper/Projectivy/TorrServe Bound; Binding={} и
+   Crashed={}; torrserver, VPN/tun0 и Projectivy foreground.
+2. STR Sleep ~30 sec -> Wake: BLACK -> Projectivy; SESSION START/FINISH есть;
+   Mapper/Projectivy/TorrServe Bound; VPN CONNECTED; ControlActivity отсутствует.
+3. Android TV/Projectivy card FOX MiTV Restorer -> ControlActivity без recovery.
 
-- EARLY_BOOT SUCCESS;
-- Projectivy foreground;
-- после BOOT_COMPLETED TorrServe RECOVERED/ALREADY_ENABLED;
-- v2RayTun CONNECTED/ALREADY_ACTIVE.
+Дополнительно в этих трёх тестах проверить LAUNCHER/LEANBACK/INFO resolution,
+app label/icon/banner и совпадение dumpsys/SESSION START versionCode=14.
 
-B. STR Sleep 30 sec -> Wake:
-
-- RecoveryCover;
-- STR SESSION START;
-- Mapper/Projectivy/TorrServe/v2RayTun recovery;
-- SESSION FINISH COMPLETED;
-- Projectivy foreground;
-- ControlActivity не появляется.
-
-C. User Open:
-
-- Settings «Открыть» -> ControlActivity без recovery;
-- Android TV/Projectivy card -> ControlActivity через LEANBACK_LAUNCHER;
-- LAUNCHER resolve -> MainActivity;
-- LEANBACK_LAUNCHER resolve -> ControlActivity;
-- INFO resolve -> ControlActivity.
-
-Release blocker: STR -> ControlActivity, отсутствие SESSION, Bound={} или Crashed
-у Mapper/Projectivy/TorrServe. GitHub Release до физического acceptance test не
-публиковать.
+Любой release blocker из ТЗ запрещает публикацию. GitHub Release не опубликован,
+push не выполнялся.

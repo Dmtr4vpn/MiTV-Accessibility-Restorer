@@ -1,11 +1,11 @@
-# MiTV Accessibility Restorer
+# FOX MiTV Restorer
 
 Android TV-приложение для восстановления рабочего окружения Xiaomi Mi TV S75
 после холодной загрузки и пробуждения из сна (STR).
 
 - package: `com.mitv.accessibilityrestorer`
 - versionName: `4.0.0`
-- versionCode: `13`
+- versionCode: `14`
 - minSdk: `21`
 - targetSdk: `28`
 - compileSdk: `35`
@@ -135,23 +135,27 @@ VPN определяется через `ConnectivityManager` application contex
 
 `MainActivity` остаётся единственным `MAIN/LAUNCHER`, который Xiaomi использует
 как recovery/bootstrap entry при cold boot и STR. Она всегда выполняет recovery
-semantics и никогда не маршрутизирует пользовательский запуск в UI по runtime-
-эвристике.
+semantics, имеет непрозрачную чёрную trampoline theme и никогда не маршрутизирует
+пользовательский запуск в UI по runtime-эвристике.
 
 Пользовательские entry points принадлежат `ControlActivity`:
 
 ```text
 MAIN + LEANBACK_LAUNCHER -> ControlActivity
-MAIN + INFO              -> ControlActivity
 ```
 
-Обычный `LAUNCHER` у `ControlActivity` отсутствует. Поэтому Xiaomi recovery launch
-остаётся на `MainActivity`, Android TV-карточка открывает `ControlActivity`, а
-package front-door/Settings «Открыть» получает `ControlActivity` через `INFO`.
+Обычный `LAUNCHER` и `INFO` у `ControlActivity` отсутствуют. Поэтому Xiaomi
+automatic package relaunch остаётся на чёрной `MainActivity`, а Android TV/
+Projectivy-карточка открывает `ControlActivity` через `LEANBACK_LAUNCHER`.
 
 `ControlActivity` показывает core-компоненты, необязательные TorrServe/v2RayTun,
 состояние `WRITE_SECURE_SETTINGS`, диагностику и кнопку «Восстановить сейчас».
 Отсутствие optional packages не блокирует завершение первичной настройки.
+
+Системное имя приложения: `FOX MiTV Restorer`. Launcher icon технически уменьшена
+из утверждённого `3.1.png`; adaptive-icon override отсутствует. Android TV banner
+использует существующий `1280x720` FOX artwork. Версия в UI и `SESSION START`
+читается из установленного `PackageInfo`, а не из hardcoded константы.
 
 ## Разрешения
 
@@ -180,6 +184,6 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 `
 
 ## Ограничения проверки
 
-APK `versionCode 13` собран и статически проверен, но физические cold boot,
+APK `versionCode 14` собран и статически проверен, но физические cold boot,
 ручное открытие UI и STR regression должен выполнить пользователь на телевизоре.
 Приложение не может заменить проверку Bound/Binding/Crashed через `dumpsys`.
