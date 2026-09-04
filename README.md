@@ -5,7 +5,7 @@ S75 после холодной загрузки и горячего пробу�
 
 - package: `com.mitv.accessibilityrestorer`
 - versionName: `4.0.0`
-- versionCode: `10`
+- versionCode: `11`
 - minSdk: `21`
 - targetSdk: `28`
 - compileSdk: `35`
@@ -15,7 +15,8 @@ S75 после холодной загрузки и горячего пробу�
 ## Назначение
 
 При cold boot Restorer восстанавливает Accessibility Button Mapper и Projectivy,
-после чего открывает Projectivy. При STR приложение дополнительно восстанавливает
+после чего открывает Projectivy и отдельным неблокирующим шагом запускает
+восстановление v2RayTun VPN. При STR приложение дополнительно восстанавливает
 TorrServe Accessibility и параллельно помогает запустить v2RayTun VPN.
 
 Обычный визуальный путь STR:
@@ -28,10 +29,13 @@ Restorer не меняет Android default HOME и не отключает `com.
 
 ## Первичная настройка
 
-Стандартная установка выполняется файлом `INSTALL.cmd` из папки с APK. Скрипт:
+Стандартная установка выполняется файлом `INSTALL.cmd` из корня
+`ADBAppControl-1.8.6`; APK помещаются в подпапку `install`, а локальный ADB
+находится в `adb\adb.exe`. Скрипт:
 
-1. Проверяет наличие `adb` и ровно одного авторизованного устройства.
-2. Выполняет `adb install -r`.
+1. Проверяет локальный `adb` и помогает подключить или спарить телевизор.
+2. Для каждого `install\*.apk` сравнивает package и `versionCode`: устанавливает
+   новый пакет, обновляет старую версию, пропускает одинаковую и не делает downgrade.
 3. Выдаёт и проверяет `WRITE_SECURE_SETTINGS`.
 4. Открывает `ControlActivity` с экраном первоначальной настройки.
 
@@ -49,7 +53,7 @@ APK не пытается сам выполнять `pm grant`, root, Shizuku и
 
 1. Включите ADB debugging на ТВ.
 2. Подключите ТВ к ПК и подтвердите отладку.
-3. Поместите `INSTALL.cmd` рядом с `MiTVAccessibilityRestorer-4.0.0.apk`.
+3. Поместите `INSTALL.cmd` в корень `ADBAppControl-1.8.6`, а APK — в `install`.
 4. Запустите `INSTALL.cmd`.
 5. Завершите настройку на открывшемся экране ТВ.
 
@@ -62,9 +66,9 @@ adb shell am start -n com.mitv.accessibilityrestorer/.ControlActivity
 ```
 
 Стандартный installer не настраивает `Settings.System["start_3rd_app"]`. Текущая
-STR-архитектура рассчитана на работу без этого шага установки; физическая
-clean-install проверка без vendor setting пока ожидается. Внутренний advisory
-readback `ALREADY_ARMED`/`MISSING_UNARMED` сохранён и не считается ошибкой.
+STR-архитектура рассчитана на работу без этого шага установки. Физический cold
+boot подтвердил запуск Restorer при пустом setting. Внутренний advisory readback
+`ALREADY_ARMED`/`MISSING_UNARMED` сохранён и не считается ошибкой.
 
 ## Cold boot
 
@@ -72,8 +76,11 @@ Cold boot использует Direct Boot, `LOCKED_BOOT_COMPLETED` и резе�
 `BOOT_COMPLETED`, защиту по `BOOT_COUNT`, ранний запуск после `2500 ms` и
 одноразовый fallback alarm на `10000 ms`.
 
-В cold-boot ветку не входят TorrServe, v2RayTun VPN assist, first-run setup, STR
-cover или многофазный STR reset.
+Cold boot core recovery remains limited to Mapper/Projectivy. After successful
+core cold boot, Restorer asynchronously restores v2RayTun VPN as a non-blocking
+post-boot step. Этот шаг запускается только после `SESSION FINISH` и не задерживает
+Projectivy. TorrServe, first-run setup, STR cover и многофазный STR reset в
+cold-boot ветку не входят.
 
 ## STR
 
@@ -119,7 +126,8 @@ Target появляется только в `ALL FINAL`. Restorer не откр�
 
 ## v2RayTun VPN assist
 
-VPN helper работает только в STR и параллельно Accessibility recovery. Для
+VPN helper используется параллельно Accessibility recovery в STR, а при cold boot
+запускается асинхронно только после успешного core и Projectivy final launch. Для
 `ConnectivityManager` всегда используется application context Restorer.
 
 При `SecurityException` определение VPN повторяется до трёх раз с паузой `100 ms`.
@@ -127,7 +135,7 @@ VPN helper работает только в STR и параллельно Access
 когда повторный readback подтверждает `FLAG_STOPPED=true`. Для `stopped=false`
 blind toggle запрещён.
 
-Trigger не изменён и отправляется не более одного раза за STR session:
+Trigger не изменён и отправляется не более одного раза за invocation/session:
 
 ```text
 action:    com.v2raytun.android.action.widget.click
@@ -179,7 +187,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 `
 
 ## Ограничения
 
-- Новый APK `versionCode 10` ещё не проверен на физическом телевизоре.
+- Новый APK `versionCode 11` статически проверен, но его post-boot VPN шаг ещё не
+  проверен физическим cold boot на телевизоре.
 - APK не имеет аналога `dumpsys accessibility` и не подтверждает Bound/Crashed.
 - Любой уже активный VPN transport предотвращает v2RayTun toggle.
 - Invisible receiver и service components зависят от версий целевых приложений.

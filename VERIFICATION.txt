@@ -6,16 +6,17 @@ MiTV Accessibility Restorer 4.0.0 - STATIC VERIFICATION
 ВАЖНО
 ------
 
-Новый APK versionCode 10 не проверялся Codex на физическом телевизоре.
-Ниже разделены выполненная статическая проверка и команды будущего теста на
-Xiaomi Mi TV S75 / MiTV-MFTR0, MiTV OS 2.8.1712, Android 11.
+Новый APK versionCode 11 не проверялся Codex на физическом телевизоре.
+Core cold boot и STR были физически подтверждены пользователем на versionCode 10.
+Ниже разделены выполненная статическая проверка и будущий acceptance test нового
+post-boot VPN шага на Xiaomi Mi TV S75 / MiTV-MFTR0, MiTV OS 2.8.1712, Android 11.
 
 ИДЕНТИЧНОСТЬ СБОРКИ
 -------------------
 
 package: com.mitv.accessibilityrestorer
 versionName: 4.0.0
-versionCode: 10
+versionCode: 11
 minSdkVersion: 21
 targetSdkVersion: 28
 compileSdkVersion: 35
@@ -23,20 +24,20 @@ compileSdkVersion: 35
 APK:
 MiTVAccessibilityRestorer-4.0.0.apk
 size: 49634 bytes
-SHA-256: D1EE2E8B741495D45C721D8C4E3D2C23B72B965160A2833489A03393AEA93AD9
+SHA-256: 10C6F20EDC0F84BFB10B3AE55DF283050674177F6BD2325DEEA5C20F62F24C79
 
 Source ZIP:
 MiTVAccessibilityRestorer-4.0.0-sources.zip
-size: 50682 bytes
-SHA-256: 97E4912947C1803029D5146849E21CF53B5006448969370B2BF4783937E25321
+size: 57288 bytes
+SHA-256: F39FF81216D78F4320300B6EA8C80FFD9E6C7413A48587A831210FDFE463111A
 
 classes.dex:
-size: 86616 bytes
-SHA-256: ED197A47E81233CEA1473EC95D28EDF1EF0C79D97C7AB2CD4C78A2A716B9B7A2
-DEX Adler32 checksum reported by dexdump: 14b05d9b
+size: 87208 bytes
+SHA-256: 56D1464E1625DF9864CF7694647930DAA5253ECD700E2DDEED29CA6184143291
+DEX Adler32 checksum reported by dexdump: 5a2ec8f1
 
 INSTALL.cmd:
-SHA-256: 4C5B78BCF48654DC387E700F73CE6EB13AA6370DB663CB9C7A8D01BAC0D25EF5
+SHA-256: 694B705930DFFAE7C675568741C8A5F1CB6EA50954892A28457321D8F5BE4F57
 
 СБОРКА
 ------
@@ -86,7 +87,7 @@ aapt2 dump badging и aapt2 dump xmltree подтвердили:
 
 - package=com.mitv.accessibilityrestorer
 - versionName=4.0.0
-- versionCode=10
+- versionCode=11
 - minSdkVersion=21
 - targetSdkVersion=28
 - compileSdkVersion=35
@@ -125,7 +126,7 @@ SHA-256 непосредственного результата D8.
 - exit code: 0
 - DEX version: 035
 - class definitions: 58
-- output lines: 13871
+- output lines: 13957
 - verifier/parser errors: отсутствуют
 
 В DEX найдены, включая inner-классы:
@@ -167,6 +168,20 @@ V2RAY BUGFIX
 - timeout после trigger: 5000 ms;
 - grace для stopped=false: 2000 ms.
 
+Cold boot post-VPN статически подтверждён:
+
+- core `SESSION FINISH` и boot completion marker выполняются до VPN assist;
+- вызов разрешён только при fullSuccess=true;
+- после `SESSION FINISH` вызывается существующий асинхронный
+  V2RayVpnAssist.start(context, session, source=COLD_BOOT_POST_VPN);
+- Projectivy final launch и весь core завершаются до запуска VPN worker;
+- VPN результат не участвует в fullSuccess и не меняет boot completion marker;
+- отдельные логи содержат COLD BOOT POST VPN scheduled/started/FINISH;
+- итог FINISH содержит vpnAssist, vpnTriggerSent и vpnDetected;
+- V2RayVpnAssist.run(), sendTrigger и правила VPN decision byte-for-byte не
+  изменены относительно commit 5202f9cc861806a1ed92a433de208a2dc8b77c40;
+- дополнительная post-boot задержка не добавлена.
+
 Intent:
 
 action=com.v2raytun.android.action.widget.click
@@ -196,19 +211,21 @@ SetupState хранит setup_completed=true. Итоговый setupComplete в�
 реально выданного WRITE_SECURE_SETTINGS и наличия двух основных компонентов.
 Optional integrations не блокируют завершение.
 
-INSTALL.cmd статически проверен на workflow:
+INSTALL.cmd статически и через fake ADB проверен на workflow:
 
-1. adb.exe в PATH.
-2. adb start-server.
-3. Ровно одно устройство со state=device.
-4. adb install -r APK рядом со скриптом.
-5. pm grant WRITE_SECURE_SETTINGS.
-6. dumpsys readback granted=true.
-7. am start ControlActivity.
-8. success message и pause.
+1. Локальный adb\adb.exe с fallback на PATH.
+2. adb start-server и автоматический выбор единственного device.
+3. Диалог IP/port/pairing только при отсутствии подключения.
+4. Последовательный перебор всех install\*.apk без промежуточных pause.
+5. Чтение package/versionCode из бинарного AndroidManifest.xml каждого APK.
+6. Package отсутствует -> adb install.
+7. Installed versionCode меньше -> adb install -r.
+8. VersionCode равен -> SKIP_SAME_VERSION без adb install.
+9. Installed versionCode больше -> SKIP_NEWER_VERSION без downgrade.
+10. После любого skip выполняются pm grant, readback и am start ControlActivity.
+11. Общий результат и один перезаписываемый INSTALL-LOG.txt.
 
-При INSTALL_FAILED_UPDATE_INCOMPATIBLE скрипт только показывает команду
-adb uninstall и не выполняет её.
+При несовместимой подписи INSTALL.cmd не выполняет uninstall автоматически.
 
 INSTALL.cmd НЕ содержит и НЕ выполняет запись start_3rd_app.
 
@@ -224,8 +241,8 @@ WRITE_SUCCESS / WRITE_FAILED. APK не создаёт vendor setting.
 COLD BOOT REGRESSION
 --------------------
 
-Следующие исходники byte-for-byte совпадают с commit
-817847b92235aaeac5364e63c35c80fa005baf7e:
+Следующие исходники byte-for-byte совпадают с базовым commit
+5202f9cc861806a1ed92a433de208a2dc8b77c40:
 
 - BootReceiver.java
 - RestoreReceiver.java
@@ -234,18 +251,22 @@ COLD BOOT REGRESSION
 - DirectBootContext.java
 - RecoveryState.java
 - MainActivity.java
+- RecoveryCoverActivity.java
+- TorrServeTarget.java
+- TargetUnstopper.java
 
-RecoveryEngine.java отличается от исходного commit только VERSION_CODE 9 -> 10.
-Его runColdBoot(), Direct Boot, BOOT_COUNT, lastCompletedBootCount, early boot
-2500 ms, one-shot fallback alarm 10000 ms, lightweight recovery и final
-Projectivy launch не изменены.
+RecoveryEngine.java отличается от базового commit только VERSION_CODE 10 -> 11
+и условным post-VPN вызовом после уже записанного SESSION FINISH. Direct Boot,
+BOOT_COUNT, lastCompletedBootCount, early boot 2500 ms, one-shot fallback alarm
+10000 ms, lightweight recovery, Projectivy final launch и boot marker не изменены.
+STR tail RecoveryEngine byte-for-byte совпадает с базовым commit.
 
-VendorStartApp API/calls сохранены, но helper намеренно переведён в read-only,
-чтобы выполнить требование не записывать start_3rd_app из APK. Это не добавляет
-в cold boot новых фаз, задержек, TorrServe, VPN или setup UI.
+VendorStartApp и read-only advisory start_3rd_app не изменены. Пустое значение
+остаётся MISSING_UNARMED и не считается ошибкой.
 
 В BootReceiver, RestoreReceiver, AccessibilityRestorer и MainActivity нет ссылок
-на TorrServeTarget, V2RayVpnAssist, SetupState или SetupStatus.
+на V2RayVpnAssist. Post-boot invocation локализован в RecoveryEngine после
+успешного SESSION FINISH.
 
 STR REGRESSION
 --------------
@@ -268,8 +289,9 @@ Conservative retry не изменён:
 - максимум 2 attempts
 
 Button Mapper/Projectivy invisible unstop, black RecoveryCover, final Projectivy
-и TorrServe только в ALL FINAL не изменены. V2RayVpnAssist остаётся параллельным
-advisory helper и не задерживает final Projectivy.
+и TorrServe только в ALL FINAL не изменены. Двухаргументный STR-вызов
+V2RayVpnAssist сохранён и делегирует прежней логике с source=null; VPN по-прежнему
+не задерживает final Projectivy.
 
 ЗАПРЕЩЁННЫЕ МЕХАНИЗМЫ
 ----------------------
@@ -304,31 +326,39 @@ Source ZIP создан из явного белого списка. Прове�
 ФИЗИЧЕСКАЯ ПРОВЕРКА, КОТОРУЮ ЕЩЁ НУЖНО ВЫПОЛНИТЬ
 -------------------------------------------------
 
-Сначала удалить переживающий uninstall vendor setting:
-
-adb shell settings delete system start_3rd_app
-adb shell settings get system start_3rd_app
-
-Ожидается: null
-
-Затем:
-
-adb uninstall com.mitv.accessibilityrestorer
-
-Установить через INSTALL.cmd и убедиться, что скрипт не создаёт setting:
+Обновить установленный versionCode 10 через INSTALL.cmd. Ожидается сравнение
+10 < 11 и обычный adb install -r с тем же сертификатом. Затем проверить:
 
 adb shell settings get system start_3rd_app
+adb shell settings get secure enabled_accessibility_services
+adb shell settings get secure accessibility_enabled
 
-Ожидается: null
+start_3rd_app может быть пустым/MISSING_UNARMED; Restorer не должен его записывать.
 
-Выполнить минимум 3 цикла Sleep -> 30 sec -> Wake и отдельно минимум 5 STR для
-v2RayTun. Нужна проверка обычного пути SEND_ONCE -> CONNECTED и, если Xiaomi
-воспроизведёт SecurityException, пути:
+Выполнить один настоящий cold boot. Ожидаемый core путь остаётся прежним:
 
-SecurityException -> retries -> UNKNOWN -> stopped=true
--> SEND_ONCE_FALLBACK_STOPPED -> CONNECTED
+EARLY_BOOT -> accessibility success -> Projectivy launch success
+-> SESSION FINISH success
 
-Также проверить cold boot, dumpsys accessibility, Binding/Crashed, процессы
-TorrServe/torrserver, VPN transport/tun0 и Home -> Projectivy без Xiaomi flicker.
+После него должны появиться:
+
+COLD BOOT POST VPN assist scheduled
+COLD BOOT POST VPN assist started
+V2RAY packageInstalled=...
+V2RAY stoppedBefore=...
+VPN BEFORE active=...
+V2RAY VPN trigger decision=...
+COLD BOOT POST VPN FINISH, vpnAssist=CONNECTED|ALREADY_ACTIVE|...
+
+Проверить:
+
+adb shell dumpsys accessibility
+adb shell dumpsys connectivity
+adb shell ps -A
+adb shell "logcat -d | grep -iE 'MiTVRestorer|accessibilityrestorer|AndroidRuntime'"
+
+Финально нужны Projectivy foreground, Button Mapper/Projectivy Bound,
+Binding={}, Crashed={}, V2RayVpnService active, VPN CONNECTED, InterfaceName=tun0
+и работающий YouTube без ручного запуска v2RayTun. TorrServe cold boot не менялся.
 
 GitHub Release на момент создания этого отчёта НЕ опубликован.

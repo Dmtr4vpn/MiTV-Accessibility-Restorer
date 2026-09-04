@@ -31,8 +31,21 @@ final class V2RayVpnAssist {
     }
 
     static Handle start(Context context, final String sessionId) {
+        return start(context, sessionId, null);
+    }
+
+    static Handle start(
+            Context context,
+            final String sessionId,
+            final String source) {
         final Context appContext = applicationContext(context);
         final Handle handle = new Handle(SystemClock.elapsedRealtime());
+        if (source != null) {
+            Log.i(AccessibilityRestorer.LOG_TAG,
+                    "COLD BOOT POST VPN assist started"
+                            + ", session=" + sessionId
+                            + ", source=" + source);
+        }
         try {
             Thread worker = new Thread(new Runnable() {
                 @Override
@@ -50,7 +63,7 @@ final class V2RayVpnAssist {
                                 false,
                                 handle.startedElapsed);
                     }
-                    handle.complete(result, sessionId);
+                    handle.complete(result, sessionId, source);
                 }
             }, "MiTVRestorer-VPN");
             worker.start();
@@ -60,7 +73,8 @@ final class V2RayVpnAssist {
                     exception);
             handle.complete(
                     result(Status.TRIGGER_FAILED, false, false, handle.startedElapsed),
-                    sessionId);
+                    sessionId,
+                    source);
         }
         return handle;
     }
@@ -436,7 +450,7 @@ final class V2RayVpnAssist {
                     SystemClock.elapsedRealtime() - startedElapsed);
         }
 
-        void complete(Result completed, String sessionId) {
+        void complete(Result completed, String sessionId, String source) {
             result.set(completed);
             Log.i(AccessibilityRestorer.LOG_TAG,
                     "V2RAY final vpnAssist status=" + completed.status
@@ -444,6 +458,16 @@ final class V2RayVpnAssist {
                             + ", vpnDetected=" + completed.vpnDetected
                             + ", vpnElapsedMs=" + completed.elapsedMs
                             + ", session=" + sessionId);
+            if (source != null) {
+                Log.i(AccessibilityRestorer.LOG_TAG,
+                        "COLD BOOT POST VPN FINISH"
+                                + ", source=" + source
+                                + ", session=" + sessionId
+                                + ", vpnAssist=" + completed.status
+                                + ", vpnTriggerSent=" + completed.triggerSent
+                                + ", vpnDetected=" + completed.vpnDetected
+                                + ", vpnElapsedMs=" + completed.elapsedMs);
+            }
         }
     }
 

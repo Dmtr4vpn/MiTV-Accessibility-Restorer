@@ -14,6 +14,8 @@ MiTV OS 2.8.1712 / Android 11.
   подтверждения `FLAG_STOPPED=true`; для `stopped=false` blind toggle запрещён.
 - Сохранены один trigger за STR, grace `2000 ms`, poll `250 ms` и timeout
   `5000 ms`.
+- После успешного core cold boot существующий `V2RayVpnAssist` теперь запускается
+  отдельным асинхронным post-boot шагом. Projectivy и результат core не ждут VPN.
 - Добавлен first-run экран для ТВ-пульта с проверкой основных и необязательных
   компонентов, разрешения и внутренним маркером `setup_completed`.
 - Добавлен `INSTALL.cmd`: установка, выдача/readback `WRITE_SECURE_SETTINGS` и
@@ -23,7 +25,8 @@ MiTV OS 2.8.1712 / Android 11.
 
 ## Сохранённое поведение
 
-- Accelerated cold boot не изменён.
+- Accelerated core cold boot не изменён; post-boot VPN запускается только после
+  его успешного `SESSION FINISH`.
 - Smooth STR сохраняет профиль `500 + 2500 + 1500 + 2500 + 1500 ms` и чёрный
   recovery cover.
 - Button Mapper и Projectivy восстанавливаются прежним способом.
@@ -33,7 +36,7 @@ MiTV OS 2.8.1712 / Android 11.
 ## Совместимость
 
 - Package: `com.mitv.accessibilityrestorer`
-- Version: `4.0.0` (`versionCode 10`)
+- Version: `4.0.0` (`versionCode 11`)
 - minSdk: 21
 - targetSdk: 28
 - compileSdk: 35
@@ -43,6 +46,7 @@ APK подписан прежним сертификатом и поддержи
 
 ## Проверка
 
-APK проходит локальную статическую проверку стандартным Android toolchain. Новый
-`versionCode 10` ещё не проходил физический clean-install/STR/cold-boot тест на ТВ.
+APK проходит локальную статическую проверку стандартным Android toolchain. Core
+cold boot и STR ранее проверены на ТВ на `versionCode 10`; новый post-boot VPN шаг
+в `versionCode 11` ещё должен пройти физический cold-boot test.
 Публикация GitHub Release отложена до отдельного разрешения после regression test.

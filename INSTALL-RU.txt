@@ -1,29 +1,38 @@
 MiTV Accessibility Restorer 4.0.0
 =================================
 
-Версия: 4.0.0 (versionCode 10)
+Версия: 4.0.0 (versionCode 11)
 Package: com.mitv.accessibilityrestorer
 
 СТАНДАРТНАЯ УСТАНОВКА
 ---------------------
 
 1. Включите ADB debugging в настройках телевизора.
-2. Подключите Xiaomi Mi TV S75 к ПК и подтвердите запрос отладки на ТВ.
-3. Установите Android Platform Tools так, чтобы adb.exe был доступен в PATH.
-4. Убедитесь, что INSTALL.cmd и MiTVAccessibilityRestorer-4.0.0.apk лежат рядом.
-5. Запустите INSTALL.cmd.
-6. На телевизоре откроется экран «Первичная настройка».
-7. Проверьте компоненты и нажмите «Завершить настройку».
+2. Скопируйте INSTALL.cmd в корень папки ADBAppControl-1.8.6.
+3. Убедитесь, что adb.exe находится в ADBAppControl-1.8.6\adb\adb.exe.
+4. Поместите все устанавливаемые APK в ADBAppControl-1.8.6\install.
+5. Запустите INSTALL.cmd. При отсутствии подключения скрипт запросит IP/порт или
+   проведёт через Wireless Debugging pairing.
+6. Подтвердите RSA-запрос на телевизоре, если он появится.
+7. После общей установки на телевизоре откроется экран «Первичная настройка».
+8. Проверьте компоненты и нажмите «Завершить настройку».
 
 INSTALL.cmd самостоятельно:
 
-- проверяет adb;
+- использует локальный adb\adb.exe (или adb из PATH как fallback);
 - запускает ADB server;
-- требует ровно одно авторизованное устройство;
-- выполняет adb install -r;
+- автоматически выбирает единственное авторизованное устройство;
+- при необходимости запрашивает IP/порт, pairing code или выбор устройства;
+- перебирает все install\*.apk в алфавитном порядке;
+- читает package и versionCode непосредственно из каждого APK;
+- устанавливает отсутствующий пакет через adb install;
+- обновляет меньший versionCode через adb install -r;
+- пропускает совпадающий versionCode и не выполняет автоматический downgrade;
+- не останавливает общую установку из-за ошибки отдельного APK;
 - выдаёт WRITE_SECURE_SETTINGS;
 - проверяет readback granted=true;
-- открывает com.mitv.accessibilityrestorer/.ControlActivity.
+- открывает com.mitv.accessibilityrestorer/.ControlActivity;
+- каждый запуск заново записывает единый INSTALL-LOG.txt.
 
 Скрипт НЕ выполняет uninstall автоматически и НЕ записывает start_3rd_app.
 
@@ -131,7 +140,21 @@ COLD BOOT
 
 Cold boot использует прежние Direct Boot, LOCKED_BOOT_COMPLETED, BOOT_COMPLETED,
 BOOT_COUNT, раннюю задержку 2500 ms и одноразовый fallback alarm 10000 ms.
-TorrServe, v2RayTun, setup UI и новые delays в cold-boot ветку не добавлены.
+Core recovery остаётся ограничен Button Mapper/Projectivy и прежним Projectivy
+final launch. После успешного SESSION FINISH Restorer отдельно и асинхронно
+запускает существующий V2RayVpnAssist. Этот шаг не задерживает Projectivy и не
+является условием успешности core cold boot. TorrServe в cold boot не добавлен.
 
-ВАЖНО: новый APK versionCode 10 статически проверен, но физический cold boot и
-clean-install STR без start_3rd_app должны быть проверены пользователем на ТВ.
+После установки versionCode 11 выполните настоящий cold boot и проверьте:
+
+adb shell settings get secure enabled_accessibility_services
+adb shell settings get secure accessibility_enabled
+adb shell dumpsys accessibility
+adb shell dumpsys connectivity
+adb shell "logcat -d | grep -iE 'MiTVRestorer|accessibilityrestorer|AndroidRuntime'"
+
+Ожидается прежний успешный EARLY_BOOT и Projectivy foreground, затем отдельные
+сообщения COLD BOOT POST VPN и активные V2RayVpnService/VPN transport/tun0.
+
+ВАЖНО: APK versionCode 11 статически проверен, но автоматический post-boot VPN
+шаг должен быть подтверждён физическим cold boot пользователем на телевизоре.
