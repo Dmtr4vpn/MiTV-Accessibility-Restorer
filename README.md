@@ -5,7 +5,7 @@ Android TV-приложение для восстановления рабоче
 
 - package: `com.mitv.accessibilityrestorer`
 - versionName: `4.0.0`
-- versionCode: `15`
+- versionCode: `16`
 - minSdk: `21`
 - targetSdk: `28`
 - compileSdk: `35`
@@ -44,16 +44,19 @@ installedVersionCode > apkVersion   -> downgrade пропущен
 После любого результата для Restorer скрипт проверяет/выдаёт
 `WRITE_SECURE_SETTINGS`, проверяет наличие Button Mapper и Projectivy,
 без очистки данных перезапускает Projectivy, запускает проверенный recovery,
-до 30 секунд ждёт обе Bound-службы, проверяет физический маршрут HOME в
-Projectivy и только затем открывает `ControlActivity`. Автоматический uninstall
+до 30 секунд ждёт обе Enabled/Bound-службы и Projectivy в foreground два poll
+подряд, проверяет физический маршрут HOME в Projectivy и только затем открывает
+`ControlActivity`. Автоматический uninstall
 и `pm clear` не выполняются. Подробности записываются с нуля в один
 `INSTALL-LOG.txt`.
 
 Успешность post-install bootstrap означает одновременно: оба целевых компонента
 есть в `enabled_accessibility_services`, Button Mapper и Projectivy находятся в
-секции `Bound services`, а после `KEYCODE_HOME` текущим foreground становится
-`com.spocky.projengmenu/com.spocky.projengmenu.ui.home.MainActivity`. Timeout
-ожидания core составляет 30 секунд с polling раз в секунду. При ошибке UI
+секции `Bound services`, а foreground уже равен
+`com.spocky.projengmenu/com.spocky.projengmenu.ui.home.MainActivity`. Все пять
+условий должны сохраниться два poll подряд с интервалом `1000 ms`. Затем скрипт
+ждёт `1500 ms`, отправляет `KEYCODE_HOME`, ждёт ещё `1500 ms` и требует тот же
+foreground. Timeout ожидания core составляет 30 секунд. При ошибке UI
 открывается для диагностики, но установщик возвращает ненулевой код.
 
 Ручная установка:
@@ -120,7 +123,9 @@ ALL_FINAL           1500 ms
 Projectivy final launch
 ```
 
-Сохранены чёрный `RecoveryCover`, invisible unstop Button Mapper/Projectivy,
+`RecoveryCover` для STR/fast reboot теперь однотонный `#474747`, чтобы начало
+recovery было заметно до запуска Projectivy. Чёрная cold-boot trampoline theme
+не изменена. Сохранены invisible unstop Button Mapper/Projectivy,
 TorrServe только в `ALL_FINAL`, параллельный `V2RayVpnAssist` и одна conservative
 retry при измеримой core-ошибке. Если TorrServe отсутствует, `ALL_FINAL` содержит
 только core targets, а STR продолжается штатно.
@@ -168,7 +173,12 @@ Projectivy-карточка открывает `ControlActivity` через `LEA
 
 Системное имя приложения: `FOX MiTV Restorer`. Launcher icon технически уменьшена
 из утверждённого `3.1.png`; adaptive-icon override отсутствует. Android TV banner
-использует существующий `1280x720` FOX artwork. Версия в UI и `SESSION START`
+использует существующий FOX artwork, технически уменьшенный до `640x360` PNG.
+В APK существует ровно один banner resource, общий для application и
+`ControlActivity`. Аудит установленного Projectivy 4.71 показал: пользовательское
+artwork карточки имеет приоритет; иначе при TV aspect ratio `16:9` используется
+`ActivityInfo.banner`, а при `1:1` — launcher icon. Размер карточки XS сам по
+себе другой APK banner не выбирает. Версия в UI и `SESSION START`
 читается из установленного `PackageInfo`, а не из hardcoded константы.
 
 ## Разрешения
@@ -198,7 +208,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 `
 
 ## Ограничения проверки
 
-Recovery-код `versionCode 14` физически проверен на cold boot и STR и в v15 не
-изменён. APK `versionCode 15` должен пройти на телевизоре post-install HOME,
-branding, один STR и один cold-boot regression test. Локальная сборка не может
+Recovery-код `versionCode 15` физически проверен пользователем и в v16 не
+изменён. APK `versionCode 16` должен пройти на телевизоре post-install HOME,
+compact UI, banner XS, один STR и один cold-boot regression test. Локальная сборка не может
 заменить фактическую проверку ТВ через `dumpsys`.

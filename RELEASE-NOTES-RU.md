@@ -1,81 +1,54 @@
 # FOX MiTV Restorer 4.0.0
 
-Финальная локальная кандидатная сборка `versionCode 15` для Xiaomi Mi TV S75,
+Локальная кандидатная сборка `versionCode 16` для Xiaomi Mi TV S75,
 MiTV OS 2.8.1712, Android 11.
 
-## Исправления
+## Изменения v16
 
-- Выходной APK переименован в `FOX-MiTV-Restorer-4.0.0.apk`.
-- Добавлен `android:roundIcon`; обычная и круглая иконки во всех пяти density
-  основаны только на утверждённом `3.1.png`.
-- `INSTALL.cmd` после grant выполняет безопасный Projectivy force-stop,
-  существующий MainActivity recovery, до 30 секунд ждёт enabled+Bound Button
-  Mapper/Projectivy, проверяет `KEYCODE_HOME -> Projectivy` и только затем
-  открывает ControlActivity.
-- Перезапуск Projectivy не очищает данные и одновременно заставляет launcher
-  перечитать актуальные icon/banner пакета.
-- В комплект включены master icon и извлечённый из готового APK FOX banner.
+- `INSTALL.cmd` считает post-install recovery готовым только при одновременном
+  выполнении пяти условий: Button Mapper и Projectivy находятся в
+  `enabled_accessibility_services`, обе службы находятся в `Bound services`, а
+  foreground уже равен Projectivy home activity.
+- Все пять условий должны быть стабильны два polling cycle подряд с интервалом
+  `1000 ms`. После второго успешного poll добавлен settle `1500 ms`; HOME test
+  также проверяет foreground через `1500 ms` после `KEYCODE_HOME`.
+- STR/fast-reboot `RecoveryCover` имеет однотонный цвет `#474747`. Чёрная
+  cold-boot trampoline theme не изменена; на cover нет текста, логотипа или
+  индикатора.
+- Четыре существующие кнопки `ControlActivity` расположены в сетке 2×2,
+  уменьшены отступы и размеры текста. Обработчики и статусы не изменены;
+  `ScrollView` сохранён как fallback.
+- Единственный FOX banner технически уменьшен до `640×360` PNG. Композиция,
+  кот, сердце и надпись FOX не менялись.
 
-- Cold-boot восстановление v2RayTun больше не запускается слишком рано сразу
-  после EARLY_BOOT core.
-- Добавлен idempotent gate: optional worker запускается только после успешного
-  core boot и получения Android `BOOT_COMPLETED`, независимо от порядка событий.
-- Persistent и in-memory маркеры разрешают не более одного optional worker на
-  конкретный `BOOT_COUNT`.
-- После cold boot TorrServe получает аккуратный append `GlobalTorrService` в
-  текущий raw `enabled_accessibility_services`. Системные и сторонние entries не
-  удаляются, не переупорядочиваются и не нормализуются.
-- Перед optional-операциями проверяются package и нужный component. Результаты
-  `SKIPPED_NOT_INSTALLED` и `SKIPPED_COMPONENT_UNAVAILABLE` являются advisory.
-- Ошибки TorrServe и v2RayTun изолированы друг от друга и не меняют core success.
-- `CATEGORY_INFO` полностью удалена: Xiaomi automatic package relaunch больше не
-  может открыть `ControlActivity` через package front door.
-- `MainActivity` сохранена в проверенной recovery-only семантике commit `c9834bf`.
-- Пользовательский Android TV entry остаётся только
-  `LEANBACK_LAUNCHER -> ControlActivity`.
-- `Theme.Restorer.Trampoline` стала непрозрачной и чёрной с первого кадра;
-  `RecoveryCover` остаётся solid black fullscreen.
-- Название изменено на `FOX MiTV Restorer`.
-- Launcher mipmaps заменены прямым downscale утверждённого `3.1.png`; существующий
-  FOX banner сохранён и назначен application и `ControlActivity`.
-- Hardcoded diagnostic version удалена; UI и `SESSION START` читают фактические
-  versionName/versionCode через `PackageInfo`.
-- First Run UI показывает наличие `WidgetProvider1x1` v2RayTun, но optional
-  приложения по-прежнему не блокируют завершение настройки.
+## Banner/XS audit
 
-## Сохранённое поведение
+В Restorer нет banner aliases или density variants. Application и
+`ControlActivity` ссылаются на один `@drawable/restorer_banner`, который в APK
+упакован как `res/drawable-nodpi-v4/restorer_banner.png`.
 
-- Package, signing key и `versionName 4.0.0` не изменены.
-- Direct Boot, `LOCKED_BOOT_COMPLETED`, `BOOT_COUNT`, EARLY_BOOT `2500 ms`,
-  одноразовый fallback alarm `10000 ms` и core Mapper/Projectivy не изменены.
-- `MainActivity` остаётся единственным `MAIN/LAUNCHER` recovery entry.
-- `ControlActivity` имеет только `MAIN/LEANBACK_LAUNCHER`, без `INFO` и обычного
-  `LAUNCHER`.
-- STR sequence и профиль `500 + 2500 + 1500 + 2500 + 1500 ms` не изменены.
-- TorrServe остаётся только в `ALL_FINAL` для STR.
-- Существующий `V2RayVpnAssist` переиспользуется без второго VPN-алгоритма:
-  3 retries по `100 ms`, grace `2000 ms`, poll `250 ms`, timeout `5000 ms`,
-  не более одного widget trigger и запрет blind toggle при
-  `stopped=false + VPN=UNKNOWN`.
-- `start_3rd_app` остаётся read-only advisory и стандартной установкой не
-  записывается.
+Read-only DEX-аудит установленного Projectivy Launcher 4.71 подтвердил порядок
+источников карточки: сначала custom artwork, если оно задано; иначе при TV app
+aspect ratio 16:9 загружается `ActivityInfo.banner`, а при 1:1 — launcher icon.
+Размер карточки XS не выбирает отдельный banner variant. Поэтому при устаревшем
+XS artwork следует проверить custom artwork/cache и настройку TV app aspect
+ratio в Projectivy, а не добавлять другой ресурс Restorer.
 
-## Совместимость
+## Замороженное поведение
 
-- package: `com.mitv.accessibilityrestorer`
-- versionName: `4.0.0`
-- versionCode: `15`
-- minSdk: `21`
-- targetSdk: `28`
-- compileSdk: `35`
+- Package, signing key, `versionName=4.0.0`, launcher icon `3.1.png`, manifest
+  routing и permissions не изменены.
+- `MainActivity.java`, `RecoveryEngine.java`, `RecoveryState.java`,
+  `BootReceiver.java` и `V2RayVpnAssist.java` byte-for-byte совпадают с базовым
+  commit `dfbf260f9c9ab06976d323c4582b7bc43990ce87`.
+- Cold boot, EARLY_BOOT, BOOT_FALLBACK, BOOT_COUNT, optional gate, TorrServe,
+  v2RayTun, Button Mapper, Projectivy final launch, STR sequence/timings и
+  `start_3rd_app` read-only behavior не менялись.
+- Установщик не делает `pm clear`, не переустанавливает Projectivy/Button Mapper
+  и не маскирует HOME test запуском Projectivy после READY.
 
-APK подписан прежним сертификатом, поэтому поддерживает `adb install -r` поверх
-предыдущих сборок с тем же ключом.
+## Публикация
 
-## Проверка и публикация
-
-APK прошёл локальную production-сборку, проверку подписи/выравнивания/Manifest и
-полный `dexdump`. Физические cold boot, Android TV user UI и STR regression для
-Recovery v14 уже физически подтверждён. Для `versionCode 15` пользователь должен
-проверить post-install HOME, branding, один cold boot и один STR regression.
-GitHub Release до этого не публикуется.
+APK прошёл локальную production-сборку, подпись, zipalign, Manifest/resource
+audit и полный `dexdump`. Физические post-install, STR, cold-boot, compact UI и
+XS banner проверки v16 ещё требуются. Push и GitHub Release не выполнялись.

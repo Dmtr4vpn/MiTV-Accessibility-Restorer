@@ -527,15 +527,24 @@ exit /b 0
 
 :wait_for_core_ready
 set "CORE_RECOVERY_STATUS=FAILED"
->>"%LOG_FILE%" echo Waiting up to 30 seconds for core Accessibility services.
+set /a READY_STREAK=0
+>>"%LOG_FILE%" echo Waiting up to 30 seconds for core Accessibility services and Projectivy foreground.
 for /l %%I in (1,1,30) do (
     call :check_core_ready %%I
     if not errorlevel 1 (
+        set /a READY_STREAK+=1
+    ) else (
+        set /a READY_STREAK=0
+    )
+    >>"%LOG_FILE%" echo POLL %%I: readiness streak=!READY_STREAK!/2.
+    if !READY_STREAK! GEQ 2 (
         set "CORE_RECOVERY_STATUS=READY"
-        >>"%LOG_FILE%" echo Core recovery became READY after %%I polling cycle^(s^).
+        >>"%LOG_FILE%" echo Core recovery became READY after %%I polling cycle^(s^); all five conditions were stable for 2 consecutive polls.
+        >>"%LOG_FILE%" echo WAIT: 1500 ms after stable READY before HOME test
+        powershell.exe -NoLogo -NoProfile -NonInteractive -Command "Start-Sleep -Milliseconds 1500"
         exit /b 0
     )
-    if %%I LSS 30 timeout /t 1 /nobreak >nul
+    if %%I LSS 30 powershell.exe -NoLogo -NoProfile -NonInteractive -Command "Start-Sleep -Milliseconds 1000"
 )
 >>"%LOG_FILE%" echo ERROR: Core recovery timed out after 30 seconds.
 >>"%LOG_FILE%" echo Last dumpsys accessibility output:
@@ -547,6 +556,7 @@ set "MAPPER_ENABLED=NO"
 set "PROJECTIVY_ENABLED=NO"
 set "MAPPER_BOUND=NO"
 set "PROJECTIVY_BOUND=NO"
+set "PROJECTIVY_FOREGROUND=NO"
 
 "%ADB%" -s "!DEVICE_SERIAL!" shell settings get secure enabled_accessibility_services >"%TEMP_OUTPUT%" 2>&1
 set "SETTINGS_READ_RESULT=!ERRORLEVEL!"
@@ -579,7 +589,14 @@ if "!BOUND_PARSE_RESULT!"=="0" (
     >>"%LOG_FILE%" echo WARNING: Bound services parser failed during poll %~1.
     type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
 )
->>"%LOG_FILE%" echo POLL %~1: Mapper enabled=!MAPPER_ENABLED!, bound=!MAPPER_BOUND!; Projectivy enabled=!PROJECTIVY_ENABLED!, bound=!PROJECTIVY_BOUND!.
+"%ADB%" -s "!DEVICE_SERIAL!" shell dumpsys window >"%WINDOW_OUTPUT%" 2>&1
+set "WINDOW_RESULT=!ERRORLEVEL!"
+findstr /I /C:"mCurrentFocus" /C:"mFocusedApp" "%WINDOW_OUTPUT%" >"%TEMP_OUTPUT%"
+findstr /I /L /C:"com.spocky.projengmenu/com.spocky.projengmenu.ui.home.MainActivity" /C:"com.spocky.projengmenu/.ui.home.MainActivity" "%TEMP_OUTPUT%" >nul
+if not errorlevel 1 set "PROJECTIVY_FOREGROUND=YES"
+>>"%LOG_FILE%" echo POLL %~1 foreground readback:
+type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
+>>"%LOG_FILE%" echo POLL %~1: Mapper enabled=!MAPPER_ENABLED!, bound=!MAPPER_BOUND!; Projectivy enabled=!PROJECTIVY_ENABLED!, bound=!PROJECTIVY_BOUND!, foreground=!PROJECTIVY_FOREGROUND!.
 
 if not "!SETTINGS_READ_RESULT!"=="0" exit /b 1
 if not "!ACCESSIBILITY_RESULT!"=="0" exit /b 1
@@ -587,6 +604,8 @@ if not "!MAPPER_ENABLED!"=="YES" exit /b 1
 if not "!PROJECTIVY_ENABLED!"=="YES" exit /b 1
 if not "!MAPPER_BOUND!"=="YES" exit /b 1
 if not "!PROJECTIVY_BOUND!"=="YES" exit /b 1
+if not "!WINDOW_RESULT!"=="0" exit /b 1
+if not "!PROJECTIVY_FOREGROUND!"=="YES" exit /b 1
 exit /b 0
 
 :test_home
@@ -600,8 +619,8 @@ if not "!HOME_KEY_RESULT!"=="0" (
     exit /b 1
 )
 
->>"%LOG_FILE%" echo WAIT: 1250 ms after KEYCODE_HOME
-powershell.exe -NoLogo -NoProfile -NonInteractive -Command "Start-Sleep -Milliseconds 1250"
+>>"%LOG_FILE%" echo WAIT: 1500 ms after KEYCODE_HOME
+powershell.exe -NoLogo -NoProfile -NonInteractive -Command "Start-Sleep -Milliseconds 1500"
 >>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell dumpsys window
 "%ADB%" -s "!DEVICE_SERIAL!" shell dumpsys window >"%WINDOW_OUTPUT%" 2>&1
 set "WINDOW_RESULT=!ERRORLEVEL!"

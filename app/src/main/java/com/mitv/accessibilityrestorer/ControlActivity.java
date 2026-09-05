@@ -37,35 +37,25 @@ public final class ControlActivity extends Activity {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setGravity(Gravity.CENTER_HORIZONTAL);
-        int padding = dp(32);
-        content.setPadding(padding, padding, padding, padding);
+        content.setPadding(dp(24), dp(16), dp(24), dp(16));
 
         TextView title = new TextView(this);
         title.setText(getApplicationInfo().loadLabel(getPackageManager()));
         title.setTextColor(Color.WHITE);
-        title.setTextSize(28f);
+        title.setTextSize(27f);
         content.addView(title, matchWrap());
 
         headingView = new TextView(this);
         headingView.setTextColor(Color.WHITE);
-        headingView.setTextSize(21f);
-        headingView.setPadding(0, dp(14), 0, 0);
+        headingView.setTextSize(18f);
+        headingView.setPadding(0, dp(6), 0, 0);
         content.addView(headingView, matchWrap());
 
         statusView = new TextView(this);
         statusView.setTextColor(Color.LTGRAY);
-        statusView.setTextSize(18f);
-        statusView.setPadding(0, dp(20), 0, dp(14));
+        statusView.setTextSize(16f);
+        statusView.setPadding(0, dp(8), 0, dp(4));
         content.addView(statusView, matchWrap());
-
-        finishSetupButton = createButton("Завершить настройку");
-        finishSetupButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                finishSetup();
-            }
-        });
-        content.addView(finishSetupButton, buttonParams());
 
         checkAgainButton = createButton("Проверить снова");
         checkAgainButton.setOnClickListener(new View.OnClickListener() {
@@ -75,7 +65,14 @@ public final class ControlActivity extends Activity {
                 refreshStatus();
             }
         });
-        content.addView(checkAgainButton, buttonParams());
+
+        finishSetupButton = createButton("Завершить настройку");
+        finishSetupButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                finishSetup();
+            }
+        });
 
         diagnosticsButton = createButton("Диагностика");
         diagnosticsButton.setOnClickListener(new View.OnClickListener() {
@@ -87,8 +84,6 @@ public final class ControlActivity extends Activity {
                 refreshStatus();
             }
         });
-        content.addView(diagnosticsButton, buttonParams());
-
         restoreButton = createButton("Восстановить сейчас");
         restoreButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -96,13 +91,23 @@ public final class ControlActivity extends Activity {
                 startManualRecovery();
             }
         });
-        content.addView(restoreButton, buttonParams());
+        assignButtonFocusNavigation();
+
+        LinearLayout firstButtonRow = createButtonRow();
+        firstButtonRow.addView(checkAgainButton, gridButtonParams(0));
+        firstButtonRow.addView(finishSetupButton, gridButtonParams(dp(10)));
+        content.addView(firstButtonRow, buttonRowParams(dp(4)));
+
+        LinearLayout secondButtonRow = createButtonRow();
+        secondButtonRow.addView(diagnosticsButton, gridButtonParams(0));
+        secondButtonRow.addView(restoreButton, gridButtonParams(dp(10)));
+        content.addView(secondButtonRow, buttonRowParams(dp(8)));
 
         TextView note = new TextView(this);
         note.setText("Bound/Binding/Crashed проверяются через ADB. Подробности выполнения доступны в logcat по тегу MiTVRestorer.");
         note.setTextColor(Color.GRAY);
-        note.setTextSize(15f);
-        note.setPadding(0, dp(20), 0, 0);
+        note.setTextSize(14f);
+        note.setPadding(0, dp(8), 0, 0);
         content.addView(note, matchWrap());
 
         scrollView.addView(content);
@@ -303,10 +308,28 @@ public final class ControlActivity extends Activity {
     private Button createButton(String label) {
         Button button = new Button(this);
         button.setText(label);
-        button.setTextSize(18f);
+        button.setTextSize(16f);
         button.setFocusable(true);
         button.setMinHeight(dp(52));
+        button.setId(View.generateViewId());
         return button;
+    }
+
+    private void assignButtonFocusNavigation() {
+        checkAgainButton.setNextFocusRightId(finishSetupButton.getId());
+        checkAgainButton.setNextFocusDownId(diagnosticsButton.getId());
+        finishSetupButton.setNextFocusLeftId(checkAgainButton.getId());
+        finishSetupButton.setNextFocusDownId(restoreButton.getId());
+        diagnosticsButton.setNextFocusUpId(checkAgainButton.getId());
+        diagnosticsButton.setNextFocusRightId(restoreButton.getId());
+        restoreButton.setNextFocusUpId(finishSetupButton.getId());
+        restoreButton.setNextFocusLeftId(diagnosticsButton.getId());
+    }
+
+    private LinearLayout createButtonRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        return row;
     }
 
     private void requestInitialFocus() {
@@ -324,11 +347,20 @@ public final class ControlActivity extends Activity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    private LinearLayout.LayoutParams buttonParams() {
+    private LinearLayout.LayoutParams gridButtonParams(int leftMargin) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                0,
+                dp(52),
+                1f);
+        params.leftMargin = leftMargin;
+        return params;
+    }
+
+    private LinearLayout.LayoutParams buttonRowParams(int topMargin) {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
-        params.topMargin = dp(8);
+        params.topMargin = topMargin;
         return params;
     }
 

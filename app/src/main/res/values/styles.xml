@@ -16,8 +16,10 @@
 
     <style name="Theme.Restorer.RecoveryCover" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:windowIsTranslucent">false</item>
-        <item name="android:windowBackground">@android:color/black</item>
-        <item name="android:colorBackground">@android:color/black</item>
+        <item name="android:windowBackground">#474747</item>
+        <item name="android:colorBackground">#474747</item>
+        <item name="android:statusBarColor">#474747</item>
+        <item name="android:navigationBarColor">#474747</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:backgroundDimEnabled">false</item>
         <item name="android:windowFullscreen">true</item>

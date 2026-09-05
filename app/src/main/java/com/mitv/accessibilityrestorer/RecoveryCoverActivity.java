@@ -11,6 +11,7 @@ import android.view.View;
 import java.lang.ref.WeakReference;
 
 public final class RecoveryCoverActivity extends Activity {
+    private static final int COVER_COLOR = Color.rgb(0x47, 0x47, 0x47);
     private static final Object LOCK = new Object();
     private static WeakReference<RecoveryCoverActivity> active =
             new WeakReference<RecoveryCoverActivity>(null);
@@ -76,10 +77,10 @@ public final class RecoveryCoverActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().setStatusBarColor(Color.BLACK);
-        getWindow().setNavigationBarColor(Color.BLACK);
+        getWindow().setStatusBarColor(COVER_COLOR);
+        getWindow().setNavigationBarColor(COVER_COLOR);
         View cover = new View(this);
-        cover.setBackgroundColor(Color.BLACK);
+        cover.setBackgroundColor(COVER_COLOR);
         setContentView(cover);
         synchronized (LOCK) {
             active = new WeakReference<RecoveryCoverActivity>(this);

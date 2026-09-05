@@ -1,7 +1,7 @@
 FOX MiTV Restorer 4.0.0
 =======================
 
-Версия: 4.0.0 (versionCode 15)
+Версия: 4.0.0 (versionCode 16)
 Package: com.mitv.accessibilityrestorer
 
 СТАНДАРТНАЯ УСТАНОВКА
@@ -23,8 +23,8 @@ ADBAppControl-1.8.6\
 5. Дождитесь общего резюме. Скрипт не требует подтверждения каждого APK и не
    останавливается после отдельной ошибки.
 6. Скрипт перезапустит Projectivy без очистки данных, выполнит recovery, дождётся
-   Button Mapper и Projectivy в Bound services, проверит HOME и только после
-   успешной проверки откроет ControlActivity.
+   Button Mapper и Projectivy в Enabled/Bound и Projectivy в foreground два
+   опроса подряд, проверит HOME и только после проверки откроет ControlActivity.
 
 INSTALL.cmd каждый раз очищает INSTALL-LOG.txt, перебирает install\*.apk в
 алфавитном порядке и сравнивает package/versionCode:
@@ -38,6 +38,12 @@ installedVersionCode > apkVersion   -> SKIP, automatic downgrade запрещё�
 grant/readback, проверка core packages, Projectivy force-stop, MainActivity
 recovery, ожидание core до 30 секунд, HOME test и запуск ControlActivity.
 Автоматический uninstall и `pm clear` не выполняются.
+
+READY требует одновременно пять условий: Button Mapper и Projectivy находятся
+в enabled_accessibility_services, обе службы находятся в секции Bound services,
+а foreground уже равен Projectivy MainActivity. Все пять условий должны быть
+успешны два опроса подряд с интервалом 1 секунда. После второго опроса скрипт
+ждёт 1500 ms, выполняет HOME test, ждёт ещё 1500 ms и проверяет foreground.
 
 Итоговое резюме отдельно показывает:
 
@@ -225,7 +231,7 @@ ACCEPTANCE: STR REGRESSION
 
 Sleep -> 30 секунд -> Wake
 
-Визуально обязательно: BLACK -> Projectivy. ControlActivity и любой branded UI
+Визуально обязательно: #474747 -> Projectivy. ControlActivity и любой branded UI
 Restorer появляться не должны.
 
 Ожидается прежний путь:
@@ -261,12 +267,13 @@ adb shell "logcat -d | grep -iE 'STR TIMING|STR RESET|V2RAY|MiTVRestorer|Android
 adb shell dumpsys package com.mitv.accessibilityrestorer | grep -i versionCode
 adb shell "logcat -d | grep -i 'MiTVRestorer.*SESSION START'"
 
-Оба результата должны содержать versionCode=15.
+Оба результата должны содержать versionCode=16.
 
 ФИЗИЧЕСКАЯ ПРОВЕРКА
 --------------------
 
-Recovery versionCode 14 физически подтверждён пользователем. Codex не подключался
-к реальному телевизору при сборке versionCode 15, поэтому post-install HOME,
-branding, один cold boot и один STR regression должны быть подтверждены на
+Recovery versionCode 15 физически подтверждён пользователем. При сборке
+versionCode 16 телевизор использовался только для read-only аудита установленного
+Projectivy; v16 на ТВ не устанавливался. Поэтому post-install HOME, compact UI,
+banner XS, один cold boot и один STR regression должны быть подтверждены на
 Xiaomi Mi TV S75 до публикации GitHub Release.

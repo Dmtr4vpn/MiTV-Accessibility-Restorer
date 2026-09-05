@@ -1,4 +1,4 @@
-FOX MiTV Restorer 4.0.0 / versionCode 15
+FOX MiTV Restorer 4.0.0 / versionCode 16
 STATIC VERIFICATION REPORT
 ============================================
 
@@ -6,71 +6,61 @@ Scope
 -----
 
 Base commit:
-9ed071ee18e0944a3bb0f0e77dbd4c892040fced
+dfbf260f9c9ab06976d323c4582b7bc43990ce87
 
-Package:
-com.mitv.accessibilityrestorer
-
-Version:
-versionName=4.0.0
-versionCode=15
-minSdkVersion=21
-targetSdkVersion=28
-compileSdkVersion=35
-
-User-visible label:
-FOX MiTV Restorer
-
-Recovery v14 was physically confirmed by the user. This v15 patch does not
-change any file under app/src/main/java. Physical v15 acceptance on the TV is
-still required for post-install HOME, branding, one STR and one cold boot.
-
-Artifacts
----------
-
-APK:
-FOX-MiTV-Restorer-4.0.0.apk
-size=1525049 bytes
-SHA-256=26AF663FEDA50CD001D06317F0A1014732BAF27CB8AB0EAF76B4FB2D23E75962
-
-Sources:
-FOX-MiTV-Restorer-4.0.0-sources.zip
-size=2356393 bytes
-entries=41
-SHA-256=05DC122841186FFF06FACE0E14E5FEEC6675BF8D5C3FF5D69CA86132CAA3643D
-
-The source ZIP contains app sources/resources plus build.ps1, README.md,
-INSTALL.cmd, INSTALL-RU.txt and RELEASE-NOTES-RU.md. It excludes .git, .build,
-dist, SDK/JDK, downloads, APK files, signing keys and caches.
-
-Signing and alignment
----------------------
-
-apksigner verify --verbose --print-certs: PASS
-v1 signature: true
-v2 signature: true
-v3 signature: true
-number of signers: 1
-
-Signing certificate SHA-256:
-646A700698CE0790D6B7F0396D8192E6A093544934E2F7F065F8726E0D3638F5
-
-zipalign -c -v 4: PASS
-
-Packaged Manifest
------------------
-
-aapt2 dump badging/xmltree confirms:
-
+Package and SDK:
 package=com.mitv.accessibilityrestorer
 versionName=4.0.0
-versionCode=15
+versionCode=16
 minSdkVersion=21
 targetSdkVersion=28
 compileSdkVersion=35
 application-label=FOX MiTV Restorer
 
-Permissions:
+This is a narrow installer/visual/UI patch. The TV was used only for a read-only
+audit of installed Projectivy Launcher 4.71. The v16 APK was not installed, and
+no physical v16 cold boot, STR, HOME or UI acceptance is claimed.
+
+Artifacts
+---------
+
+FOX-MiTV-Restorer-4.0.0.apk
+size=648507 bytes
+SHA-256=3F3FD4BDEE358E9D693A969C736625011E7E6A807601C3DB57AA967D4A491C45
+
+FOX-MiTV-Restorer-4.0.0-sources.zip
+size=898418 bytes
+entries=48
+SHA-256=1F90DF273F1A0941499D5B203D695FB8422243095BE33C86EBEE05090B014DF9
+
+Signing certificate SHA-256:
+646A700698CE0790D6B7F0396D8192E6A093544934E2F7F065F8726E0D3638F5
+
+Signing and APK structure
+-------------------------
+
+apksigner verify --verbose --print-certs: PASS
+v1 signature=true
+v2 signature=true
+v3 signature=true
+number of signers=1
+
+zipalign -c -v 4: PASS
+
+classes.dex:
+size=95628 bytes
+SHA-256=659FC2363FFB614DC3D229463906CCB87E52FADB5CBF1FAF3C0489CE81CCF4E7
+dexdump -d exit code=0
+dexdump output lines=15163
+invalid/VerifyError diagnostics=0
+
+Required DEX classes include BootReceiver, MainActivity, ControlActivity,
+RecoveryCoverActivity, RecoveryEngine, RestoreReceiver and V2RayVpnAssist.
+
+Packaged Manifest
+-----------------
+
+Permissions are unchanged from v15:
 android.permission.RECEIVE_BOOT_COMPLETED
 android.permission.WRITE_SECURE_SETTINGS
 android.permission.ACCESS_NETWORK_STATE
@@ -79,186 +69,17 @@ INTERNET: absent
 WRITE_SETTINGS: absent
 WAKE_LOCK: absent
 Android Service/ForegroundService: absent
+CATEGORY_INFO: absent
 
-Routing:
+Routing is unchanged:
 MAIN + LAUNCHER -> com.mitv.accessibilityrestorer/.MainActivity
 MAIN + LEANBACK_LAUNCHER -> com.mitv.accessibilityrestorer/.ControlActivity
 MAIN + INFO -> NO MATCH
 
-CATEGORY_INFO is absent. No app Java file contains an automatic
-ControlActivity launch.
+Recovery Java freeze
+--------------------
 
-Banner references:
-application android:banner=@drawable/restorer_banner
-ControlActivity android:banner=@drawable/restorer_banner
-No other android:banner reference exists.
-
-Icon references and overrides
------------------------------
-
-Complete source/packaged Manifest audit:
-
-application android:icon=@mipmap/ic_launcher
-application android:roundIcon=@mipmap/ic_launcher_round
-application android:logo=absent
-activity android:icon overrides=absent
-activity android:logo overrides=absent
-activity-alias=absent
-receiver icon/logo overrides=absent
-service components=absent
-
-Resource override audit:
-
-mipmap-anydpi-v26=absent
-drawable-anydpi=absent
-ic_launcher_foreground=absent
-ic_launcher_background=absent
-app_icon=absent
-layout android:src references=absent
-layout app:srcCompat references=absent
-
-Effective packaged launcher icon resources:
-
-res/mipmap-mdpi-v4/ic_launcher.png                 48x48
-res/mipmap-hdpi-v4/ic_launcher.png                 72x72
-res/mipmap-xhdpi-v4/ic_launcher.png                96x96
-res/mipmap-xxhdpi-v4/ic_launcher.png              144x144
-res/mipmap-xxxhdpi-v4/ic_launcher.png             192x192
-res/mipmap-mdpi-v4/ic_launcher_round.png            48x48
-res/mipmap-hdpi-v4/ic_launcher_round.png            72x72
-res/mipmap-xhdpi-v4/ic_launcher_round.png           96x96
-res/mipmap-xxhdpi-v4/ic_launcher_round.png         144x144
-res/mipmap-xxxhdpi-v4/ic_launcher_round.png        192x192
-
-All ten resources were deterministically regenerated from this exact master:
-C:\Users\Belomytsev.D\Downloads\3.1.png
-
-Master properties:
-1254x1254, RGB, SHA-256=
-F0BB94E761B18ADE921D0479171B9CD884A0BAA847F1502F3D7E2C3B5AF1BBC5
-
-Only HighQualityBicubic downscale was used. Deterministic regeneration matched
-every source icon byte-for-byte. Every icon extracted from the APK matched its
-source resource pixel-for-pixel after PNG decoding.
-
-Master preview in deliverables:
-FOX-MiTV-Restorer-icon.png
-
-Its SHA-256 is identical to C:\Users\Belomytsev.D\Downloads\3.1.png:
-F0BB94E761B18ADE921D0479171B9CD884A0BAA847F1502F3D7E2C3B5AF1BBC5
-
-FOX banner verification
------------------------
-
-Source:
-C:\Users\Belomytsev.D\.codex\.chatgpt-projects\g-p-6a9633eaa4d8819186d705308ce0345d\MiTVAccessibilityRestorer-4.0.0\app\src\main\res\drawable-nodpi\restorer_banner.png
-
-Source properties:
-PNG, 1280x720, 16:9, RGB
-SHA-256=97A990D7C6E8028E3476F55B4EDCBBEF5FAC3CA30CC1E108A927FFDD2A5631F8
-
-The source image was opened and visually inspected. It contains large visible
-letters FOX on the left side, reading from bottom to top.
-
-Packaged resource:
-res/drawable-nodpi-v4/restorer_banner.png
-
-It was extracted from the final signed APK and opened visually. The extracted
-image contains the same visible FOX text. It is pixel-for-pixel identical to the
-source after PNG decoding. aapt2 changed only the PNG encoding.
-
-Extracted APK banner in deliverables:
-FOX-MiTV-Restorer-banner-from-apk.png
-SHA-256=4E9572F8360114CCBB790C43D9EECB2DA3C8629F0BA7F0479F9E5636FD1F3E8E
-
-DEX verification
-----------------
-
-classes.dex exists and was extracted successfully.
-DEX version=035
-file size=94732 bytes
-class_defs_size=64
-SHA-256=17E615D0567A16BAC900930490E6700A7B0457687D81A52AE3CAA153535781B8
-
-dexdump -d exit code=0
-dexdump output lines=15357
-VerifyError/invalid bytecode diagnostics=0
-
-Required classes present:
-BootReceiver
-RestoreReceiver
-AccessibilityRestorer
-MainActivity
-ControlActivity
-RecoveryEngine
-RecoveryCoverActivity
-PostBootOptionalRecovery
-V2RayVpnAssist
-
-Installer flow
---------------
-
-INSTALL.cmd versionCode decisions are unchanged:
-
-package absent -> adb install
-installed versionCode lower -> adb install -r
-same versionCode -> skip install
-installed versionCode higher -> no automatic downgrade
-
-The final configure_restorer flow runs even after same-version skip:
-
-1. Locate com.mitv.accessibilityrestorer.
-2. Grant WRITE_SECURE_SETTINGS and verify granted=true readback.
-3. Verify flar2.homebutton and com.spocky.projengmenu with pm path.
-4. Run only am force-stop com.spocky.projengmenu; no data is cleared.
-5. Start existing recovery with am start -W -n
-   com.mitv.accessibilityrestorer/.MainActivity.
-6. Poll once per second for up to 30 seconds.
-7. Require both target components in enabled_accessibility_services.
-8. Parse only the Bound services section of dumpsys accessibility and require
-   Button Mapper plus Projectivy Launcher/package there.
-9. Send KEYCODE_HOME with adb shell input keyevent 3.
-10. Wait 1250 ms and inspect mCurrentFocus/mFocusedApp from dumpsys window.
-11. Require Projectivy home foreground:
-    com.spocky.projengmenu/com.spocky.projengmenu.ui.home.MainActivity
-12. Open com.mitv.accessibilityrestorer/.ControlActivity last.
-
-TorrServe and v2RayTun do not participate in installer success criteria.
-
-Final summary fields:
-
-FOX MiTV Restorer: installed / not installed
-WRITE_SECURE_SETTINGS: granted / error
-Core recovery after install: READY / FAILED / CORE_MISSING
-Button Mapper bound: YES / NO
-Projectivy bound: YES / NO
-HOME -> Projectivy: OK / FAILED
-Setup UI: opened / failed
-
-Static/mock installer tests
----------------------------
-
-Success mock:
-Core recovery=READY, Mapper=YES, Projectivy=YES, HOME=OK, UI=opened, exit=0.
-
-Missing core mock:
-Core recovery=CORE_MISSING, Mapper=NO, Projectivy=NO, HOME=FAILED,
-UI=opened for diagnostics, exit=2.
-
-HOME failure mock:
-Core recovery=READY, Mapper=YES, Projectivy=YES, HOME=FAILED,
-UI=opened for diagnostics, exit=2.
-
-Search confirms INSTALL.cmd contains neither:
-pm clear com.spocky.projengmenu
-settings put system start_3rd_app
-
-Java/recovery freeze audit
---------------------------
-
-Java files changed relative to base commit 9ed071e: 0
-
-Unchanged Git blob IDs:
+The following working-tree Git blobs exactly match base commit dfbf260f:
 
 MainActivity.java
 14e1dd84088f4659d26e8eaa6f6814b2c4a626b1
@@ -269,26 +90,166 @@ a65b3443de26af47b02932de7de8e86be5335e4a
 RecoveryState.java
 9f62a1ca92f23380a51d3dc84c388b9309d6a6d1
 
-RecoveryCoverActivity.java
-476dec49a0a998986a7472503262220d54de0142
+BootReceiver.java
+819aed5144732bfa75a4e8ab95062fceb6b05ba3
 
-Therefore cold boot, STR timings/sequence, RecoveryCover, TorrServe,
-V2RayVpnAssist, POST_BOOT_OPTIONAL gate, start_3rd_app read-only behavior and
-Projectivy final launch are unchanged from physically tested v14.
+V2RayVpnAssist.java
+affb4f80d82d333e0f48bf3900e98482c4136e16
 
-Publication status
-------------------
+Therefore EARLY_BOOT, BOOT_FALLBACK, BOOT_COUNT, POST_BOOT_OPTIONAL_RECOVERY,
+TorrServe, v2RayTun, accessibility sequence, STR timings, Projectivy final
+launch and start_3rd_app read-only behavior are unchanged.
 
-No push was performed.
-No GitHub Release was created or published.
-Local tag v4.0.0 is moved only after final commit and final verification.
+STR cover
+---------
 
-Physical v15 acceptance still required
---------------------------------------
+Exact visual sources:
 
-1. Run INSTALL.cmd and, before any reboot, confirm its summary is READY/YES/OK,
-   ControlActivity opens, and physical HOME immediately opens Projectivy.
-2. Confirm label FOX MiTV Restorer, the 3.1.png square icon and visible FOX TV
-   banner in actual system/Projectivy UI.
-3. Run one STR: BLACK -> Projectivy and HOME -> Projectivy.
-4. Run one cold boot: BLACK -> Projectivy, with no branded Restorer UI.
+app/src/main/res/values/styles.xml
+Theme.Restorer.RecoveryCover window/background/status/navigation=#474747
+
+app/src/main/java/com/mitv/accessibilityrestorer/RecoveryCoverActivity.java
+COVER_COLOR=Color.rgb(0x47, 0x47, 0x47)
+
+The Activity creates one full-screen View with COVER_COLOR. No logo, text,
+spinner, progress bar or icon is present.
+
+aapt2 resource table:
+0x7f040000 style/Theme.Restorer.RecoveryCover -> #ff474747
+0x7f040001 style/Theme.Restorer.Trampoline -> @android:color/black
+
+MainActivity calls RecoveryCoverActivity.show only after STR_READY. BOOT_PENDING
+branches before cover preparation. Theme.Restorer.Trampoline and its black
+cold-boot resources are unchanged from v15.
+
+INSTALL.cmd readiness and HOME test
+-----------------------------------
+
+The installation/versionCode algorithm is unchanged. After the existing
+Projectivy force-stop and explicit MainActivity bootstrap, READY now requires
+all five conditions simultaneously:
+
+1. Button Mapper is in enabled_accessibility_services.
+2. Projectivy is in enabled_accessibility_services.
+3. Button Mapper is in the Bound services section.
+4. Projectivy is in the Bound services section.
+5. Foreground is Projectivy home MainActivity.
+
+All five conditions must pass 2 consecutive polling cycles. Poll interval is
+1000 ms and total timeout is 30 cycles/seconds. Any failed poll resets the
+readiness streak to zero.
+
+After the second successful poll:
+wait 1500 ms
+send adb shell input keyevent 3
+wait 1500 ms
+read mCurrentFocus/mFocusedApp from dumpsys window
+
+HOME succeeds only for:
+com.spocky.projengmenu/com.spocky.projengmenu.ui.home.MainActivity
+or the equivalent short activity notation.
+
+No Projectivy am start occurs after READY. No pm clear, app reinstall or HOME
+settings write was added.
+
+Static/mock installer run:
+POLL 1 five conditions=YES, readiness streak=1/2
+POLL 2 five conditions=YES, readiness streak=2/2
+Core recovery after install=READY
+Button Mapper bound=YES
+Projectivy bound=YES
+HOME -> Projectivy=OK
+exit code=0
+
+FOX banner chain
+----------------
+
+Source audit found exactly one banner file and no aliases/density variants:
+app/src/main/res/drawable-nodpi/restorer_banner.png
+
+Source is 640x360, 16:9, RGB PNG, 515781 bytes.
+Only HighQualityBicubic technical scaling from the approved v15 1280x720 FOX
+artwork was performed. Cat, heart, FOX letters, composition and colors were not
+redesigned.
+
+Packaged resource chain:
+
+ApplicationInfo.banner
+-> @drawable/restorer_banner
+-> resource ID 0x7f010000
+-> res/drawable-nodpi-v4/restorer_banner.png
+
+ControlActivity ActivityInfo.banner
+-> @drawable/restorer_banner
+-> resource ID 0x7f010000
+-> res/drawable-nodpi-v4/restorer_banner.png
+
+No other active android:banner reference exists.
+
+Extracted packaged banner:
+FOX-MiTV-Restorer-banner-from-apk.png
+resource path=res/drawable-nodpi-v4/restorer_banner.png
+pixel size=640x360
+file size=348094 bytes
+SHA-256=F6C4CD01AF457C59A7BA3B2AC12A06032F793F21F1917C56CFC61FDF86890158
+
+The extracted PNG was opened after packaging and visually verified. It contains
+the approved cat/heart composition and large visible FOX letters.
+
+Projectivy XS source audit
+--------------------------
+
+Installed read-only audit target:
+Projectivy Launcher versionName=4.71, versionCode=95.
+
+Its card image path first returns a per-card custom artwork URI when one exists.
+Otherwise the card binder calls the shared ActivityInfo resource selector. DEX
+disassembly proves that selector is controlled by preference key
+key_launcher_card_tv_app_aspect_ratio:
+
+TV aspect ratio != ASPECT_RATIO_1_1 (including 16:9)
+-> ActivityInfo.getBannerResource()
+-> ActivityInfo/ApplicationInfo banner
+-> icon only if banner resource is zero
+
+TV aspect ratio == ASPECT_RATIO_1_1
+-> ActivityInfo.getIconResource()
+
+Card size XS is not used in this source-selection method. Therefore Projectivy
+XS cannot select a second Restorer APK banner variant: none exists. If XS does
+not show the FOX banner, its actual source is either configured per-card custom
+artwork/cache or the launcher icon selected by 1:1 TV-app aspect ratio. The
+approved square icon 3.1.png was not changed.
+
+ControlActivity UI/button audit
+-------------------------------
+
+Exactly four Button instances are created:
+
+1. Проверить снова -> notice=null; refreshStatus().
+2. Завершить настройку -> finishSetup().
+3. Диагностика -> toggle diagnosticsExpanded; refreshStatus().
+4. Восстановить сейчас -> startManualRecovery().
+
+No fifth/no-op button exists. Buttons use a 2x2 grid in the requested order,
+52dp height, 16sp text and 10dp horizontal/8dp row gaps. Explicit D-pad
+left/right/up/down focus IDs are assigned. Status logic and handlers are
+unchanged. Root padding is 24dp horizontal/16dp vertical; title 27sp, section
+18sp, status 16sp and note 14sp. ScrollView remains as fallback.
+
+1920x1080 layout mock:
+FOX-MiTV-Restorer-ControlActivity-1920x1080.png
+SHA-256=C6F81B0B0AE1DC8B53C26371F7D20CD9B3C9ED3D6F21FD53C470F3D5A99CC428
+
+Publication and physical acceptance
+-----------------------------------
+
+Push NOT performed.
+GitHub Release NOT created or published.
+
+Physical v16 acceptance still required:
+1. INSTALL.cmd READY/YES/YES/OK and physical HOME -> Projectivy.
+2. STR: #474747 -> Projectivy, with the existing functional recovery.
+3. Cold boot visually/functionally unchanged from v15.
+4. Compact ControlActivity at 1920x1080.
+5. Projectivy XS banner/custom-artwork/aspect-ratio behavior on the TV.
