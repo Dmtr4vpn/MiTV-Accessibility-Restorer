@@ -5,7 +5,7 @@ Android TV-приложение для восстановления рабоче
 
 - package: `com.mitv.accessibilityrestorer`
 - versionName: `4.0.0`
-- versionCode: `14`
+- versionCode: `15`
 - minSdk: `21`
 - targetSdk: `28`
 - compileSdk: `35`
@@ -42,15 +42,29 @@ installedVersionCode > apkVersion   -> downgrade пропущен
 ```
 
 После любого результата для Restorer скрипт проверяет/выдаёт
-`WRITE_SECURE_SETTINGS`, проверяет readback и открывает `ControlActivity`.
-Автоматический uninstall не выполняется. Подробности записываются с нуля в один
+`WRITE_SECURE_SETTINGS`, проверяет наличие Button Mapper и Projectivy,
+без очистки данных перезапускает Projectivy, запускает проверенный recovery,
+до 30 секунд ждёт обе Bound-службы, проверяет физический маршрут HOME в
+Projectivy и только затем открывает `ControlActivity`. Автоматический uninstall
+и `pm clear` не выполняются. Подробности записываются с нуля в один
 `INSTALL-LOG.txt`.
+
+Успешность post-install bootstrap означает одновременно: оба целевых компонента
+есть в `enabled_accessibility_services`, Button Mapper и Projectivy находятся в
+секции `Bound services`, а после `KEYCODE_HOME` текущим foreground становится
+`com.spocky.projengmenu/com.spocky.projengmenu.ui.home.MainActivity`. Timeout
+ожидания core составляет 30 секунд с polling раз в секунду. При ошибке UI
+открывается для диагностики, но установщик возвращает ненулевой код.
 
 Ручная установка:
 
 ```text
-adb install -r MiTVAccessibilityRestorer-4.0.0.apk
+adb install -r FOX-MiTV-Restorer-4.0.0.apk
 adb shell pm grant com.mitv.accessibilityrestorer android.permission.WRITE_SECURE_SETTINGS
+adb shell am force-stop com.spocky.projengmenu
+adb shell am start -W -n com.mitv.accessibilityrestorer/.MainActivity
+adb shell input keyevent 3
+adb shell dumpsys window
 adb shell am start -n com.mitv.accessibilityrestorer/.ControlActivity
 ```
 
@@ -184,6 +198,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 `
 
 ## Ограничения проверки
 
-APK `versionCode 14` собран и статически проверен, но физические cold boot,
-ручное открытие UI и STR regression должен выполнить пользователь на телевизоре.
-Приложение не может заменить проверку Bound/Binding/Crashed через `dumpsys`.
+Recovery-код `versionCode 14` физически проверен на cold boot и STR и в v15 не
+изменён. APK `versionCode 15` должен пройти на телевизоре post-install HOME,
+branding, один STR и один cold-boot regression test. Локальная сборка не может
+заменить фактическую проверку ТВ через `dumpsys`.

@@ -1,9 +1,20 @@
 # FOX MiTV Restorer 4.0.0
 
-Финальная локальная кандидатная сборка `versionCode 14` для Xiaomi Mi TV S75,
+Финальная локальная кандидатная сборка `versionCode 15` для Xiaomi Mi TV S75,
 MiTV OS 2.8.1712, Android 11.
 
 ## Исправления
+
+- Выходной APK переименован в `FOX-MiTV-Restorer-4.0.0.apk`.
+- Добавлен `android:roundIcon`; обычная и круглая иконки во всех пяти density
+  основаны только на утверждённом `3.1.png`.
+- `INSTALL.cmd` после grant выполняет безопасный Projectivy force-stop,
+  существующий MainActivity recovery, до 30 секунд ждёт enabled+Bound Button
+  Mapper/Projectivy, проверяет `KEYCODE_HOME -> Projectivy` и только затем
+  открывает ControlActivity.
+- Перезапуск Projectivy не очищает данные и одновременно заставляет launcher
+  перечитать актуальные icon/banner пакета.
+- В комплект включены master icon и извлечённый из готового APK FOX banner.
 
 - Cold-boot восстановление v2RayTun больше не запускается слишком рано сразу
   после EARLY_BOOT core.
@@ -53,7 +64,7 @@ MiTV OS 2.8.1712, Android 11.
 
 - package: `com.mitv.accessibilityrestorer`
 - versionName: `4.0.0`
-- versionCode: `14`
+- versionCode: `15`
 - minSdk: `21`
 - targetSdk: `28`
 - compileSdk: `35`
@@ -65,5 +76,6 @@ APK подписан прежним сертификатом, поэтому п�
 
 APK прошёл локальную production-сборку, проверку подписи/выравнивания/Manifest и
 полный `dexdump`. Физические cold boot, Android TV user UI и STR regression для
-`versionCode 14` ещё должен выполнить пользователь. GitHub Release до этого не
-публикуется.
+Recovery v14 уже физически подтверждён. Для `versionCode 15` пользователь должен
+проверить post-install HOME, branding, один cold boot и один STR regression.
+GitHub Release до этого не публикуется.

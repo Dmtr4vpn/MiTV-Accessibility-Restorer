@@ -1,7 +1,7 @@
 FOX MiTV Restorer 4.0.0
 =======================
 
-Версия: 4.0.0 (versionCode 14)
+Версия: 4.0.0 (versionCode 15)
 Package: com.mitv.accessibilityrestorer
 
 СТАНДАРТНАЯ УСТАНОВКА
@@ -12,7 +12,7 @@ Package: com.mitv.accessibilityrestorer
 ADBAppControl-1.8.6\
   INSTALL.cmd
   adb\adb.exe
-  install\MiTVAccessibilityRestorer-4.0.0.apk
+  install\FOX-MiTV-Restorer-4.0.0.apk
   install\другие-приложения.apk
 
 1. Включите ADB debugging на телевизоре.
@@ -22,8 +22,9 @@ ADBAppControl-1.8.6\
 4. Один раз подтвердите RSA-доступ на телевизоре, если появится запрос.
 5. Дождитесь общего резюме. Скрипт не требует подтверждения каждого APK и не
    останавливается после отдельной ошибки.
-6. На телевизоре откроется ControlActivity. Проверьте основные компоненты и
-   нажмите «Завершить настройку».
+6. Скрипт перезапустит Projectivy без очистки данных, выполнит recovery, дождётся
+   Button Mapper и Projectivy в Bound services, проверит HOME и только после
+   успешной проверки откроет ControlActivity.
 
 INSTALL.cmd каждый раз очищает INSTALL-LOG.txt, перебирает install\*.apk в
 алфавитном порядке и сравнивает package/versionCode:
@@ -33,8 +34,24 @@ installedVersionCode < apkVersion   -> UPDATE через adb install -r
 installedVersionCode = apkVersion   -> SKIP INSTALL
 installedVersionCode > apkVersion   -> SKIP, automatic downgrade запрещён
 
-После SKIP Restorer всё равно проверяются WRITE_SECURE_SETTINGS, permission
-readback и запуск ControlActivity. Автоматический uninstall не выполняется.
+После SKIP Restorer всё равно выполняется полный post-install bootstrap:
+grant/readback, проверка core packages, Projectivy force-stop, MainActivity
+recovery, ожидание core до 30 секунд, HOME test и запуск ControlActivity.
+Автоматический uninstall и `pm clear` не выполняются.
+
+Итоговое резюме отдельно показывает:
+
+FOX MiTV Restorer: installed / not installed
+WRITE_SECURE_SETTINGS: granted / ошибка
+Core recovery after install: READY / FAILED / CORE_MISSING
+Button Mapper bound: YES / NO
+Projectivy bound: YES / NO
+HOME -> Projectivy: OK / FAILED
+Setup UI: opened / failed
+
+Если core не готов за 30 секунд или HOME не открыл Projectivy, скрипт всё равно
+открывает ControlActivity для диагностики, но завершает работу с кодом 2 и явно
+показывает ошибку в резюме и INSTALL-LOG.txt.
 
 Если получено INSTALL_FAILED_UPDATE_INCOMPATIBLE, установленный Restorer подписан
 другим ключом. Только после осознанного решения выполните:
@@ -49,9 +66,30 @@ TorrServe или v2RayTun.
 
 Обновление с совместимой подписью:
 
-adb install -r MiTVAccessibilityRestorer-4.0.0.apk
+adb install -r FOX-MiTV-Restorer-4.0.0.apk
 adb shell pm grant com.mitv.accessibilityrestorer android.permission.WRITE_SECURE_SETTINGS
 adb shell dumpsys package com.mitv.accessibilityrestorer | grep -i WRITE_SECURE_SETTINGS
+adb shell pm path flar2.homebutton
+adb shell pm path com.spocky.projengmenu
+adb shell am force-stop com.spocky.projengmenu
+adb shell am start -W -n com.mitv.accessibilityrestorer/.MainActivity
+
+После запуска MainActivity дождитесь, пока обе службы станут Enabled и Bound:
+
+adb shell settings get secure enabled_accessibility_services
+adb shell dumpsys accessibility
+
+Только после этого проверьте HOME:
+
+adb shell input keyevent 3
+adb shell dumpsys window
+
+Ожидаемый foreground:
+
+com.spocky.projengmenu/com.spocky.projengmenu.ui.home.MainActivity
+
+После проверки откройте интерфейс Restorer:
+
 adb shell am start -n com.mitv.accessibilityrestorer/.ControlActivity
 
 Стандартная и ручная установка НЕ выполняют:
@@ -75,6 +113,20 @@ adb shell settings get system start_3rd_app
 - TorrServe и v2RayTun помечены как необязательные;
 - отсутствие optional package/component не блокирует «Завершить настройку»;
 - «Восстановить сейчас» немедленно запускает ручное восстановление.
+
+ACCEPTANCE: СРАЗУ ПОСЛЕ INSTALL.cmd
+-----------------------------------
+
+До любого reboot проверьте:
+
+1. INSTALL.cmd показал Core recovery after install: READY.
+2. Button Mapper bound и Projectivy bound имеют значение YES.
+3. HOME -> Projectivy имеет значение OK.
+4. ControlActivity открылся после HOME test.
+5. Нажатие физической HOME сразу открывает Projectivy.
+
+Если любой пункт не выполнен, сохраните INSTALL-LOG.txt. Перезагрузка не должна
+использоваться как способ завершить первичную настройку.
 
 ACCEPTANCE: COLD BOOT
 ---------------------
@@ -209,11 +261,12 @@ adb shell "logcat -d | grep -iE 'STR TIMING|STR RESET|V2RAY|MiTVRestorer|Android
 adb shell dumpsys package com.mitv.accessibilityrestorer | grep -i versionCode
 adb shell "logcat -d | grep -i 'MiTVRestorer.*SESSION START'"
 
-Оба результата должны содержать versionCode=14.
+Оба результата должны содержать versionCode=15.
 
 ФИЗИЧЕСКАЯ ПРОВЕРКА
 --------------------
 
-Codex не подключался к реальному телевизору. APK versionCode 14 прошёл сборку и
-статическую проверку, но cold boot, manual UI и STR regression должны быть
-подтверждены на Xiaomi Mi TV S75 пользователем до публикации GitHub Release.
+Recovery versionCode 14 физически подтверждён пользователем. Codex не подключался
+к реальному телевизору при сборке versionCode 15, поэтому post-install HOME,
+branding, один cold boot и один STR regression должны быть подтверждены на
+Xiaomi Mi TV S75 до публикации GitHub Release.

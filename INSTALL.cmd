@@ -10,6 +10,9 @@ set "LOG_FILE=%ROOT%INSTALL-LOG.txt"
 set "TEMP_OUTPUT=%TEMP%\mitv-installer-%RANDOM%-%RANDOM%.tmp"
 set "DEVICES_OUTPUT=%TEMP%\mitv-devices-%RANDOM%-%RANDOM%.tmp"
 set "APK_METADATA_OUTPUT=%TEMP%\mitv-apk-metadata-%RANDOM%-%RANDOM%.tmp"
+set "ACCESSIBILITY_OUTPUT=%TEMP%\mitv-accessibility-%RANDOM%-%RANDOM%.tmp"
+set "BOUND_STATUS_OUTPUT=%TEMP%\mitv-bound-status-%RANDOM%-%RANDOM%.tmp"
+set "WINDOW_OUTPUT=%TEMP%\mitv-window-%RANDOM%-%RANDOM%.tmp"
 set "RESTORER_PACKAGE=com.mitv.accessibilityrestorer"
 
 set /a APK_TOTAL=0
@@ -22,10 +25,15 @@ set /a APK_FAILED=0
 set "DEVICE_SERIAL="
 set "RESTORER_STATUS=not checked"
 set "PERMISSION_STATUS=not checked"
+set "CORE_RECOVERY_STATUS=not checked"
+set "MAPPER_BOUND=NO"
+set "PROJECTIVY_BOUND=NO"
+set "HOME_STATUS=FAILED"
 set "SETUP_STATUS=not opened"
+set /a POST_INSTALL_FAILED=0
 set "FATAL_ERROR="
 
->"%LOG_FILE%" echo MiTV application bundle installer
+>"%LOG_FILE%" echo FOX MiTV Restorer application bundle installer
 >>"%LOG_FILE%" echo Started: %DATE% %TIME%
 >>"%LOG_FILE%" echo Root: %ROOT%
 >>"%LOG_FILE%" echo.
@@ -414,28 +422,32 @@ echo     Ошибка. Установка остальных APK продолж�
 exit /b 0
 
 :configure_restorer
-echo Настройка MiTV Accessibility Restorer...
+echo Настройка FOX MiTV Restorer...
 >>"%LOG_FILE%" echo ============================================================
 >>"%LOG_FILE%" echo RESTORER CONFIGURATION
+>>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell pm path %RESTORER_PACKAGE%
 "%ADB%" -s "!DEVICE_SERIAL!" shell pm path %RESTORER_PACKAGE% >"%TEMP_OUTPUT%" 2>&1
 type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
 findstr /B /C:"package:" "%TEMP_OUTPUT%" >nul
 if errorlevel 1 (
     set "RESTORER_STATUS=not installed"
     set "PERMISSION_STATUS=not available"
+    set "CORE_RECOVERY_STATUS=CORE_MISSING"
     set "SETUP_STATUS=not opened"
+    set /a POST_INSTALL_FAILED=1
     >>"%LOG_FILE%" echo Restorer package was not found.
     exit /b 0
 )
 
 set "RESTORER_STATUS=installed"
->>"%LOG_FILE%" echo COMMAND: pm grant WRITE_SECURE_SETTINGS
+>>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell pm grant %RESTORER_PACKAGE% android.permission.WRITE_SECURE_SETTINGS
 "%ADB%" -s "!DEVICE_SERIAL!" shell pm grant %RESTORER_PACKAGE% android.permission.WRITE_SECURE_SETTINGS >"%TEMP_OUTPUT%" 2>&1
 set "GRANT_RESULT=!ERRORLEVEL!"
 type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
 if not "!GRANT_RESULT!"=="0" (
     set "PERMISSION_STATUS=grant command failed"
 ) else (
+    >>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell dumpsys package %RESTORER_PACKAGE%
     "%ADB%" -s "!DEVICE_SERIAL!" shell dumpsys package %RESTORER_PACKAGE% >"%TEMP_OUTPUT%" 2>&1
     type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
     findstr /C:"android.permission.WRITE_SECURE_SETTINGS: granted=true" "%TEMP_OUTPUT%" >nul
@@ -446,14 +458,180 @@ if not "!GRANT_RESULT!"=="0" (
     )
 )
 
->>"%LOG_FILE%" echo COMMAND: am start ControlActivity
+if /I not "!PERMISSION_STATUS!"=="granted" (
+    set "CORE_RECOVERY_STATUS=FAILED"
+    set /a POST_INSTALL_FAILED=1
+    >>"%LOG_FILE%" echo Post-install recovery skipped because WRITE_SECURE_SETTINGS is not granted.
+    call :open_control_activity
+    exit /b 0
+)
+
+call :check_package_installed flar2.homebutton
+set "MAPPER_PACKAGE_RESULT=!ERRORLEVEL!"
+call :check_package_installed com.spocky.projengmenu
+set "PROJECTIVY_PACKAGE_RESULT=!ERRORLEVEL!"
+if not "!MAPPER_PACKAGE_RESULT!"=="0" (
+    set "CORE_RECOVERY_STATUS=CORE_MISSING"
+    set /a POST_INSTALL_FAILED=1
+    >>"%LOG_FILE%" echo Core package missing: flar2.homebutton
+)
+if not "!PROJECTIVY_PACKAGE_RESULT!"=="0" (
+    set "CORE_RECOVERY_STATUS=CORE_MISSING"
+    set /a POST_INSTALL_FAILED=1
+    >>"%LOG_FILE%" echo Core package missing: com.spocky.projengmenu
+)
+if /I "!CORE_RECOVERY_STATUS!"=="CORE_MISSING" (
+    call :open_control_activity
+    exit /b 0
+)
+
+>>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell am force-stop com.spocky.projengmenu
+"%ADB%" -s "!DEVICE_SERIAL!" shell am force-stop com.spocky.projengmenu >"%TEMP_OUTPUT%" 2>&1
+set "PROJECTIVY_STOP_RESULT=!ERRORLEVEL!"
+type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
+if not "!PROJECTIVY_STOP_RESULT!"=="0" >>"%LOG_FILE%" echo WARNING: Projectivy force-stop returned !PROJECTIVY_STOP_RESULT!; recovery will still be attempted.
+
+>>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell am start -W -n %RESTORER_PACKAGE%/.MainActivity
+"%ADB%" -s "!DEVICE_SERIAL!" shell am start -W -n %RESTORER_PACKAGE%/.MainActivity >"%TEMP_OUTPUT%" 2>&1
+set "RECOVERY_START_RESULT=!ERRORLEVEL!"
+type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
+if not "!RECOVERY_START_RESULT!"=="0" (
+    set "CORE_RECOVERY_STATUS=FAILED"
+    set /a POST_INSTALL_FAILED=1
+    >>"%LOG_FILE%" echo ERROR: MainActivity recovery bootstrap failed to start.
+    call :open_control_activity
+    exit /b 0
+)
+
+call :wait_for_core_ready
+if errorlevel 1 (
+    set /a POST_INSTALL_FAILED=1
+    call :open_control_activity
+    exit /b 0
+)
+
+call :test_home
+if errorlevel 1 set /a POST_INSTALL_FAILED=1
+call :open_control_activity
+exit /b 0
+
+:check_package_installed
+>>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell pm path %~1
+"%ADB%" -s "!DEVICE_SERIAL!" shell pm path "%~1" >"%TEMP_OUTPUT%" 2>&1
+set "PACKAGE_PATH_RESULT=!ERRORLEVEL!"
+type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
+if not "!PACKAGE_PATH_RESULT!"=="0" exit /b 1
+findstr /B /C:"package:" "%TEMP_OUTPUT%" >nul
+if errorlevel 1 exit /b 1
+exit /b 0
+
+:wait_for_core_ready
+set "CORE_RECOVERY_STATUS=FAILED"
+>>"%LOG_FILE%" echo Waiting up to 30 seconds for core Accessibility services.
+for /l %%I in (1,1,30) do (
+    call :check_core_ready %%I
+    if not errorlevel 1 (
+        set "CORE_RECOVERY_STATUS=READY"
+        >>"%LOG_FILE%" echo Core recovery became READY after %%I polling cycle^(s^).
+        exit /b 0
+    )
+    if %%I LSS 30 timeout /t 1 /nobreak >nul
+)
+>>"%LOG_FILE%" echo ERROR: Core recovery timed out after 30 seconds.
+>>"%LOG_FILE%" echo Last dumpsys accessibility output:
+type "%ACCESSIBILITY_OUTPUT%" >>"%LOG_FILE%" 2>nul
+exit /b 1
+
+:check_core_ready
+set "MAPPER_ENABLED=NO"
+set "PROJECTIVY_ENABLED=NO"
+set "MAPPER_BOUND=NO"
+set "PROJECTIVY_BOUND=NO"
+
+"%ADB%" -s "!DEVICE_SERIAL!" shell settings get secure enabled_accessibility_services >"%TEMP_OUTPUT%" 2>&1
+set "SETTINGS_READ_RESULT=!ERRORLEVEL!"
+findstr /L /C:"flar2.homebutton/a.i" "%TEMP_OUTPUT%" >nul
+if not errorlevel 1 set "MAPPER_ENABLED=YES"
+findstr /L /C:"com.spocky.projengmenu/com.spocky.projengmenu.services.ProjectivyAccessibilityService" "%TEMP_OUTPUT%" >nul
+if not errorlevel 1 set "PROJECTIVY_ENABLED=YES"
+>>"%LOG_FILE%" echo POLL %~1 COMMAND: adb -s !DEVICE_SERIAL! shell settings get secure enabled_accessibility_services
+type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
+
+"%ADB%" -s "!DEVICE_SERIAL!" shell dumpsys accessibility >"%ACCESSIBILITY_OUTPUT%" 2>&1
+set "ACCESSIBILITY_RESULT=!ERRORLEVEL!"
+set "MITV_ACCESSIBILITY_OUTPUT=%ACCESSIBILITY_OUTPUT%"
+set "MITV_BOUND_STATUS_OUTPUT=%BOUND_STATUS_OUTPUT%"
+del /q "%BOUND_STATUS_OUTPUT%" >nul 2>&1
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$text=[IO.File]::ReadAllText($env:MITV_ACCESSIBILITY_OUTPUT);$start=$text.IndexOf('Bound services:',[StringComparison]::OrdinalIgnoreCase);if($start -lt 0){throw 'Bound services section not found'};$end=$text.IndexOf('Binding services:',$start,[StringComparison]::OrdinalIgnoreCase);if($end -lt 0){$end=$text.IndexOf('Crashed services:',$start,[StringComparison]::OrdinalIgnoreCase)};if($end -lt 0){$end=$text.Length};$bound=$text.Substring($start,$end-$start);$mapper=if($bound.IndexOf('flar2.homebutton',[StringComparison]::OrdinalIgnoreCase)-ge 0 -or $bound.IndexOf('Button Mapper',[StringComparison]::OrdinalIgnoreCase)-ge 0){'YES'}else{'NO'};$projectivy=if($bound.IndexOf('com.spocky.projengmenu',[StringComparison]::OrdinalIgnoreCase)-ge 0 -or $bound.IndexOf('Projectivy Launcher',[StringComparison]::OrdinalIgnoreCase)-ge 0){'YES'}else{'NO'};[IO.File]::WriteAllLines($env:MITV_BOUND_STATUS_OUTPUT,@(('MAPPER_BOUND='+$mapper),('PROJECTIVY_BOUND='+$projectivy)),(New-Object Text.UTF8Encoding($false)))" >"%TEMP_OUTPUT%" 2>&1
+set "BOUND_PARSE_RESULT=!ERRORLEVEL!"
+set "MITV_ACCESSIBILITY_OUTPUT="
+set "MITV_BOUND_STATUS_OUTPUT="
+if "!BOUND_PARSE_RESULT!"=="0" (
+    if exist "%BOUND_STATUS_OUTPUT%" (
+        for /f "usebackq tokens=1,* delims==" %%A in ("%BOUND_STATUS_OUTPUT%") do (
+            if /I "%%A"=="MAPPER_BOUND" set "MAPPER_BOUND=%%B"
+            if /I "%%A"=="PROJECTIVY_BOUND" set "PROJECTIVY_BOUND=%%B"
+        )
+    ) else (
+        >>"%LOG_FILE%" echo WARNING: Bound services status file was not created during poll %~1.
+    )
+) else (
+    >>"%LOG_FILE%" echo WARNING: Bound services parser failed during poll %~1.
+    type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
+)
+>>"%LOG_FILE%" echo POLL %~1: Mapper enabled=!MAPPER_ENABLED!, bound=!MAPPER_BOUND!; Projectivy enabled=!PROJECTIVY_ENABLED!, bound=!PROJECTIVY_BOUND!.
+
+if not "!SETTINGS_READ_RESULT!"=="0" exit /b 1
+if not "!ACCESSIBILITY_RESULT!"=="0" exit /b 1
+if not "!MAPPER_ENABLED!"=="YES" exit /b 1
+if not "!PROJECTIVY_ENABLED!"=="YES" exit /b 1
+if not "!MAPPER_BOUND!"=="YES" exit /b 1
+if not "!PROJECTIVY_BOUND!"=="YES" exit /b 1
+exit /b 0
+
+:test_home
+>>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell input keyevent 3
+"%ADB%" -s "!DEVICE_SERIAL!" shell input keyevent 3 >"%TEMP_OUTPUT%" 2>&1
+set "HOME_KEY_RESULT=!ERRORLEVEL!"
+type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
+if not "!HOME_KEY_RESULT!"=="0" (
+    set "HOME_STATUS=FAILED"
+    >>"%LOG_FILE%" echo ERROR: KEYCODE_HOME command failed.
+    exit /b 1
+)
+
+>>"%LOG_FILE%" echo WAIT: 1250 ms after KEYCODE_HOME
+powershell.exe -NoLogo -NoProfile -NonInteractive -Command "Start-Sleep -Milliseconds 1250"
+>>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell dumpsys window
+"%ADB%" -s "!DEVICE_SERIAL!" shell dumpsys window >"%WINDOW_OUTPUT%" 2>&1
+set "WINDOW_RESULT=!ERRORLEVEL!"
+findstr /I /C:"mCurrentFocus" /C:"mFocusedApp" "%WINDOW_OUTPUT%" >"%TEMP_OUTPUT%"
+>>"%LOG_FILE%" echo Foreground readback:
+type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
+if not "!WINDOW_RESULT!"=="0" (
+    set "HOME_STATUS=FAILED"
+    exit /b 1
+)
+findstr /I /L /C:"com.spocky.projengmenu/com.spocky.projengmenu.ui.home.MainActivity" /C:"com.spocky.projengmenu/.ui.home.MainActivity" "%TEMP_OUTPUT%" >nul
+if errorlevel 1 (
+    set "HOME_STATUS=FAILED"
+    >>"%LOG_FILE%" echo HOME_STATUS=FAILED
+    exit /b 1
+)
+set "HOME_STATUS=OK"
+>>"%LOG_FILE%" echo HOME_STATUS=OK
+exit /b 0
+
+:open_control_activity
+>>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell am start -n %RESTORER_PACKAGE%/.ControlActivity
 "%ADB%" -s "!DEVICE_SERIAL!" shell am start -n %RESTORER_PACKAGE%/.ControlActivity >"%TEMP_OUTPUT%" 2>&1
 set "SETUP_RESULT=!ERRORLEVEL!"
 type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
 if "!SETUP_RESULT!"=="0" (
     set "SETUP_STATUS=opened"
 ) else (
-    set "SETUP_STATUS=failed to open"
+    set "SETUP_STATUS=failed"
+    set /a POST_INSTALL_FAILED=1
 )
 exit /b 0
 
@@ -461,12 +639,17 @@ exit /b 0
 del /q "%TEMP_OUTPUT%" >nul 2>&1
 del /q "%DEVICES_OUTPUT%" >nul 2>&1
 del /q "%APK_METADATA_OUTPUT%" >nul 2>&1
+del /q "%ACCESSIBILITY_OUTPUT%" >nul 2>&1
+del /q "%BOUND_STATUS_OUTPUT%" >nul 2>&1
+del /q "%WINDOW_OUTPUT%" >nul 2>&1
 
 echo.
 echo ============================================================
 if defined FATAL_ERROR (
     echo Установка не завершена: !FATAL_ERROR!
 ) else if !APK_FAILED! GTR 0 (
+    echo Установка завершена с предупреждениями.
+) else if !POST_INSTALL_FAILED! GTR 0 (
     echo Установка завершена с предупреждениями.
 ) else (
     echo Установка завершена.
@@ -478,9 +661,13 @@ echo Обновлено:               !APK_UPDATED!
 echo Та же версия, пропуск:   !APK_SAME_SKIPPED!
 echo Оставлена новая версия:  !APK_NEWER_SKIPPED!
 echo Ошибок APK:              !APK_FAILED!
-echo Restorer:                !RESTORER_STATUS!
-echo WRITE_SECURE_SETTINGS:   !PERMISSION_STATUS!
-echo Setup UI:                !SETUP_STATUS!
+echo FOX MiTV Restorer:             !RESTORER_STATUS!
+echo WRITE_SECURE_SETTINGS:         !PERMISSION_STATUS!
+echo Core recovery after install:   !CORE_RECOVERY_STATUS!
+echo Button Mapper bound:           !MAPPER_BOUND!
+echo Projectivy bound:              !PROJECTIVY_BOUND!
+echo HOME -^> Projectivy:            !HOME_STATUS!
+echo Setup UI:                      !SETUP_STATUS!
 echo.
 echo Подробности: INSTALL-LOG.txt
 echo ============================================================
@@ -493,8 +680,12 @@ echo ============================================================
 >>"%LOG_FILE%" echo Same installed version skipped: !APK_SAME_SKIPPED!
 >>"%LOG_FILE%" echo Newer installed version kept: !APK_NEWER_SKIPPED!
 >>"%LOG_FILE%" echo APK failures: !APK_FAILED!
->>"%LOG_FILE%" echo Restorer: !RESTORER_STATUS!
+>>"%LOG_FILE%" echo FOX MiTV Restorer: !RESTORER_STATUS!
 >>"%LOG_FILE%" echo WRITE_SECURE_SETTINGS: !PERMISSION_STATUS!
+>>"%LOG_FILE%" echo Core recovery after install: !CORE_RECOVERY_STATUS!
+>>"%LOG_FILE%" echo Button Mapper bound: !MAPPER_BOUND!
+>>"%LOG_FILE%" echo Projectivy bound: !PROJECTIVY_BOUND!
+>>"%LOG_FILE%" echo HOME -^> Projectivy: !HOME_STATUS!
 >>"%LOG_FILE%" echo Setup UI: !SETUP_STATUS!
 if defined FATAL_ERROR >>"%LOG_FILE%" echo Fatal error: !FATAL_ERROR!
 >>"%LOG_FILE%" echo Finished: %DATE% %TIME%
@@ -504,6 +695,9 @@ if defined FATAL_ERROR exit /b 1
 if /I not "!RESTORER_STATUS!"=="installed" exit /b 1
 if /I not "!PERMISSION_STATUS!"=="granted" exit /b 1
 if !APK_FAILED! GTR 0 exit /b 2
+if /I not "!CORE_RECOVERY_STATUS!"=="READY" exit /b 2
+if /I not "!HOME_STATUS!"=="OK" exit /b 2
+if /I not "!SETUP_STATUS!"=="opened" exit /b 2
 exit /b 0
 
 :__APK_METADATA_POWERSHELL__
