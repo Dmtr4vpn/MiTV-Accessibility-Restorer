@@ -13,7 +13,8 @@ set "APK_METADATA_OUTPUT=%TEMP%\mitv-apk-metadata-%RANDOM%-%RANDOM%.tmp"
 set "ACCESSIBILITY_OUTPUT=%TEMP%\mitv-accessibility-%RANDOM%-%RANDOM%.tmp"
 set "BOUND_STATUS_OUTPUT=%TEMP%\mitv-bound-status-%RANDOM%-%RANDOM%.tmp"
 set "WINDOW_OUTPUT=%TEMP%\mitv-window-%RANDOM%-%RANDOM%.tmp"
-set "RESTORER_PACKAGE=com.mitv.accessibilityrestorer"
+set "RESTORER_PACKAGE=foxmitv.restorer"
+set "LEGACY_RESTORER_PACKAGE=com.mitv.accessibilityrestorer"
 
 set /a APK_TOTAL=0
 set /a APK_INDEX=0
@@ -28,7 +29,7 @@ set "PERMISSION_STATUS=not checked"
 set "CORE_RECOVERY_STATUS=not checked"
 set "MAPPER_BOUND=NO"
 set "PROJECTIVY_BOUND=NO"
-set "HOME_STATUS=FAILED"
+set "LEGACY_RESTORER_STATUS=not checked"
 set "SETUP_STATUS=not opened"
 set /a POST_INSTALL_FAILED=0
 set "FATAL_ERROR="
@@ -323,6 +324,38 @@ for /f "tokens=2 delims==" %%V in ('findstr /R /C:"versionCode=[0-9][0-9]*" "%TE
 if not defined INSTALLED_VERSION_CODE exit /b 1
 exit /b 0
 
+:remove_legacy_restorer
+>>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell pm path %LEGACY_RESTORER_PACKAGE%
+"%ADB%" -s "!DEVICE_SERIAL!" shell pm path %LEGACY_RESTORER_PACKAGE% >"%TEMP_OUTPUT%" 2>&1
+findstr /B /C:"package:" "%TEMP_OUTPUT%" >nul
+if errorlevel 1 (
+    set "LEGACY_RESTORER_STATUS=not installed"
+    >>"%LOG_FILE%" echo Legacy Restorer package: not installed
+    exit /b 0
+)
+
+echo     Удаление старого Restorer %LEGACY_RESTORER_PACKAGE%...
+>>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! uninstall %LEGACY_RESTORER_PACKAGE%
+"%ADB%" -s "!DEVICE_SERIAL!" uninstall %LEGACY_RESTORER_PACKAGE% >"%TEMP_OUTPUT%" 2>&1
+set "LEGACY_UNINSTALL_RESULT=!ERRORLEVEL!"
+type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
+if not "!LEGACY_UNINSTALL_RESULT!"=="0" (
+    set "LEGACY_RESTORER_STATUS=uninstall failed"
+    >>"%LOG_FILE%" echo ERROR: Legacy Restorer uninstall failed.
+    exit /b 1
+)
+
+"%ADB%" -s "!DEVICE_SERIAL!" shell pm path %LEGACY_RESTORER_PACKAGE% >"%TEMP_OUTPUT%" 2>&1
+findstr /B /C:"package:" "%TEMP_OUTPUT%" >nul
+if not errorlevel 1 (
+    set "LEGACY_RESTORER_STATUS=still installed"
+    >>"%LOG_FILE%" echo ERROR: Legacy Restorer is still installed after uninstall.
+    exit /b 1
+)
+set "LEGACY_RESTORER_STATUS=removed"
+>>"%LOG_FILE%" echo Legacy Restorer package: removed successfully
+exit /b 0
+
 :install_apk
 set /a APK_INDEX+=1
 set "APK_NAME=%~1"
@@ -340,6 +373,16 @@ if errorlevel 1 (
 )
 >>"%LOG_FILE%" echo Package: !APK_PACKAGE!
 >>"%LOG_FILE%" echo APK versionCode: !APK_VERSION_CODE!
+
+if /I "!APK_PACKAGE!"=="%RESTORER_PACKAGE%" (
+    call :remove_legacy_restorer
+    if errorlevel 1 (
+        set /a APK_FAILED+=1
+        echo     Ошибка: старый Restorer не удалён; новый пакет не устанавливается.
+        >>"%LOG_FILE%" echo RESULT: FAILED_TO_REMOVE_LEGACY_RESTORER
+        exit /b 0
+    )
+)
 
 call :get_installed_version
 if errorlevel 1 (
@@ -510,8 +553,6 @@ if errorlevel 1 (
     exit /b 0
 )
 
-call :test_home
-if errorlevel 1 set /a POST_INSTALL_FAILED=1
 call :open_control_activity
 exit /b 0
 
@@ -540,8 +581,6 @@ for /l %%I in (1,1,30) do (
     if !READY_STREAK! GEQ 2 (
         set "CORE_RECOVERY_STATUS=READY"
         >>"%LOG_FILE%" echo Core recovery became READY after %%I polling cycle^(s^); all five conditions were stable for 2 consecutive polls.
-        >>"%LOG_FILE%" echo WAIT: 1500 ms after stable READY before HOME test
-        powershell.exe -NoLogo -NoProfile -NonInteractive -Command "Start-Sleep -Milliseconds 1500"
         exit /b 0
     )
     if %%I LSS 30 powershell.exe -NoLogo -NoProfile -NonInteractive -Command "Start-Sleep -Milliseconds 1000"
@@ -608,39 +647,6 @@ if not "!WINDOW_RESULT!"=="0" exit /b 1
 if not "!PROJECTIVY_FOREGROUND!"=="YES" exit /b 1
 exit /b 0
 
-:test_home
->>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell input keyevent 3
-"%ADB%" -s "!DEVICE_SERIAL!" shell input keyevent 3 >"%TEMP_OUTPUT%" 2>&1
-set "HOME_KEY_RESULT=!ERRORLEVEL!"
-type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
-if not "!HOME_KEY_RESULT!"=="0" (
-    set "HOME_STATUS=FAILED"
-    >>"%LOG_FILE%" echo ERROR: KEYCODE_HOME command failed.
-    exit /b 1
-)
-
->>"%LOG_FILE%" echo WAIT: 1500 ms after KEYCODE_HOME
-powershell.exe -NoLogo -NoProfile -NonInteractive -Command "Start-Sleep -Milliseconds 1500"
->>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell dumpsys window
-"%ADB%" -s "!DEVICE_SERIAL!" shell dumpsys window >"%WINDOW_OUTPUT%" 2>&1
-set "WINDOW_RESULT=!ERRORLEVEL!"
-findstr /I /C:"mCurrentFocus" /C:"mFocusedApp" "%WINDOW_OUTPUT%" >"%TEMP_OUTPUT%"
->>"%LOG_FILE%" echo Foreground readback:
-type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
-if not "!WINDOW_RESULT!"=="0" (
-    set "HOME_STATUS=FAILED"
-    exit /b 1
-)
-findstr /I /L /C:"com.spocky.projengmenu/com.spocky.projengmenu.ui.home.MainActivity" /C:"com.spocky.projengmenu/.ui.home.MainActivity" "%TEMP_OUTPUT%" >nul
-if errorlevel 1 (
-    set "HOME_STATUS=FAILED"
-    >>"%LOG_FILE%" echo HOME_STATUS=FAILED
-    exit /b 1
-)
-set "HOME_STATUS=OK"
->>"%LOG_FILE%" echo HOME_STATUS=OK
-exit /b 0
-
 :open_control_activity
 >>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell am start -n %RESTORER_PACKAGE%/.ControlActivity
 "%ADB%" -s "!DEVICE_SERIAL!" shell am start -n %RESTORER_PACKAGE%/.ControlActivity >"%TEMP_OUTPUT%" 2>&1
@@ -685,8 +691,14 @@ echo WRITE_SECURE_SETTINGS:         !PERMISSION_STATUS!
 echo Core recovery after install:   !CORE_RECOVERY_STATUS!
 echo Button Mapper bound:           !MAPPER_BOUND!
 echo Projectivy bound:              !PROJECTIVY_BOUND!
-echo HOME -^> Projectivy:            !HOME_STATUS!
+echo Старый Restorer:                !LEGACY_RESTORER_STATUS!
+echo Физическая HOME:                проверьте кнопкой пульта
 echo Setup UI:                      !SETUP_STATUS!
+if /I "!CORE_RECOVERY_STATUS!"=="READY" (
+    echo.
+    echo Нажмите физическую кнопку HOME на пульте.
+    echo Ожидаемый результат: Projectivy Launcher.
+)
 echo.
 echo Подробности: INSTALL-LOG.txt
 echo ============================================================
@@ -704,8 +716,13 @@ echo ============================================================
 >>"%LOG_FILE%" echo Core recovery after install: !CORE_RECOVERY_STATUS!
 >>"%LOG_FILE%" echo Button Mapper bound: !MAPPER_BOUND!
 >>"%LOG_FILE%" echo Projectivy bound: !PROJECTIVY_BOUND!
->>"%LOG_FILE%" echo HOME -^> Projectivy: !HOME_STATUS!
+>>"%LOG_FILE%" echo Legacy Restorer: !LEGACY_RESTORER_STATUS!
+>>"%LOG_FILE%" echo Physical HOME: requires remote-button verification
 >>"%LOG_FILE%" echo Setup UI: !SETUP_STATUS!
+if /I "!CORE_RECOVERY_STATUS!"=="READY" (
+    >>"%LOG_FILE%" echo User action: press the physical HOME button on the remote.
+    >>"%LOG_FILE%" echo Expected result: Projectivy Launcher.
+)
 if defined FATAL_ERROR >>"%LOG_FILE%" echo Fatal error: !FATAL_ERROR!
 >>"%LOG_FILE%" echo Finished: %DATE% %TIME%
 
@@ -715,7 +732,6 @@ if /I not "!RESTORER_STATUS!"=="installed" exit /b 1
 if /I not "!PERMISSION_STATUS!"=="granted" exit /b 1
 if !APK_FAILED! GTR 0 exit /b 2
 if /I not "!CORE_RECOVERY_STATUS!"=="READY" exit /b 2
-if /I not "!HOME_STATUS!"=="OK" exit /b 2
 if /I not "!SETUP_STATUS!"=="opened" exit /b 2
 exit /b 0
 

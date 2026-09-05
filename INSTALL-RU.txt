@@ -1,8 +1,9 @@
 FOX MiTV Restorer 4.0.0
 =======================
 
-Версия: 4.0.0 (versionCode 16)
-Package: com.mitv.accessibilityrestorer
+Версия: 4.0.0 (versionCode 17)
+Package: foxmitv.restorer
+Прежний package: com.mitv.accessibilityrestorer
 
 СТАНДАРТНАЯ УСТАНОВКА
 ---------------------
@@ -17,237 +18,155 @@ ADBAppControl-1.8.6\
 
 1. Включите ADB debugging на телевизоре.
 2. Запустите INSTALL.cmd.
-3. Если устройство ещё не подключено, выберите IP/порт или Wireless Debugging
-   pairing и следуйте подсказкам.
+3. Если соединение отсутствует, введите IP/порт или выполните Wireless Debugging
+   pairing по подсказкам скрипта.
 4. Один раз подтвердите RSA-доступ на телевизоре, если появится запрос.
-5. Дождитесь общего резюме. Скрипт не требует подтверждения каждого APK и не
-   останавливается после отдельной ошибки.
-6. Скрипт перезапустит Projectivy без очистки данных, выполнит recovery, дождётся
-   Button Mapper и Projectivy в Enabled/Bound и Projectivy в foreground два
-   опроса подряд, проверит HOME и только после проверки откроет ControlActivity.
+5. Дождитесь итогового резюме.
 
-INSTALL.cmd каждый раз очищает INSTALL-LOG.txt, перебирает install\*.apk в
-алфавитном порядке и сравнивает package/versionCode:
+INSTALL.cmd каждый раз очищает INSTALL-LOG.txt и обрабатывает все APK из
+install\ по versionCode:
 
 package отсутствует                 -> INSTALL
 installedVersionCode < apkVersion   -> UPDATE через adb install -r
 installedVersionCode = apkVersion   -> SKIP INSTALL
-installedVersionCode > apkVersion   -> SKIP, automatic downgrade запрещён
+installedVersionCode > apkVersion   -> SKIP, downgrade запрещён
 
-После SKIP Restorer всё равно выполняется полный post-install bootstrap:
-grant/readback, проверка core packages, Projectivy force-stop, MainActivity
-recovery, ожидание core до 30 секунд, HOME test и запуск ControlActivity.
-Автоматический uninstall и `pm clear` не выполняются.
+При обработке `foxmitv.restorer` скрипт сначала проверяет legacy package
+`com.mitv.accessibilityrestorer`. Если он установлен, удаляется только старый
+Restorer. Если удалить его не удалось, новый package не устанавливается, чтобы
+на ТВ не осталось два автоматических recovery-приложения.
 
-READY требует одновременно пять условий: Button Mapper и Projectivy находятся
-в enabled_accessibility_services, обе службы находятся в секции Bound services,
-а foreground уже равен Projectivy MainActivity. Все пять условий должны быть
-успешны два опроса подряд с интервалом 1 секунда. После второго опроса скрипт
-ждёт 1500 ms, выполняет HOME test, ждёт ещё 1500 ms и проверяет foreground.
+Projectivy, Button Mapper, TorrServe и v2RayTun не удаляются и не очищаются.
+Private data старого Restorer не переносится.
 
-Итоговое резюме отдельно показывает:
+POST-INSTALL READY
+------------------
+
+После установки или SKIP нового Restorer скрипт:
+
+1. Выдаёт и проверяет WRITE_SECURE_SETTINGS.
+2. Проверяет наличие Button Mapper и Projectivy.
+3. Выполняет `am force-stop com.spocky.projengmenu` без очистки данных.
+4. Запускает `foxmitv.restorer/.MainActivity`.
+5. До 30 секунд опрашивает состояние с интервалом 1000 ms.
+
+READY требует пять условий два polling cycle подряд:
+
+- Button Mapper Enabled;
+- Projectivy Enabled;
+- Button Mapper Bound;
+- Projectivy Bound;
+- Projectivy home находится в foreground.
+
+После READY сразу открывается `foxmitv.restorer/.ControlActivity`.
+Синтетический HOME test через ADB не выполняется.
+
+Итоговое резюме показывает:
 
 FOX MiTV Restorer: installed / not installed
 WRITE_SECURE_SETTINGS: granted / ошибка
 Core recovery after install: READY / FAILED / CORE_MISSING
 Button Mapper bound: YES / NO
 Projectivy bound: YES / NO
-HOME -> Projectivy: OK / FAILED
+Старый Restorer: removed / not installed / ошибка
+Физическая HOME: проверьте кнопкой пульта
 Setup UI: opened / failed
 
-Если core не готов за 30 секунд или HOME не открыл Projectivy, скрипт всё равно
-открывает ControlActivity для диагностики, но завершает работу с кодом 2 и явно
-показывает ошибку в резюме и INSTALL-LOG.txt.
+После установки нажмите физическую кнопку HOME на пульте.
+Ожидаемый результат: Projectivy Launcher.
 
-Если получено INSTALL_FAILED_UPDATE_INCOMPATIBLE, установленный Restorer подписан
-другим ключом. Только после осознанного решения выполните:
+РУЧНАЯ МИГРАЦИЯ И УСТАНОВКА
+---------------------------
 
+Проверьте и удалите только старый Restorer:
+
+adb shell pm path com.mitv.accessibilityrestorer
 adb uninstall com.mitv.accessibilityrestorer
+adb shell pm path com.mitv.accessibilityrestorer
 
-Удаление Restorer не удаляет настройки Projectivy Launcher, Button Mapper,
-TorrServe или v2RayTun.
+Установите новый package без `-r`, выдайте разрешение и явно запустите UI:
 
-РУЧНАЯ УСТАНОВКА
+adb install FOX-MiTV-Restorer-4.0.0.apk
+adb shell pm grant foxmitv.restorer android.permission.WRITE_SECURE_SETTINGS
+adb shell dumpsys package foxmitv.restorer | grep -iE "versionCode|versionName|WRITE_SECURE_SETTINGS|stopped"
+adb shell am start -n foxmitv.restorer/.ControlActivity
+
+Ожидается:
+
+versionCode=17
+versionName=4.0.0
+android.permission.WRITE_SECURE_SETTINGS: granted=true
+stopped=false
+notLaunched=false
+
+ПРОВЕРКА ПОЛЬЗОВАТЕЛЬСКОГО ЭКРАНА
+---------------------------------
+
+ControlActivity автоматически обновляет статусы при открытии и возврате в окно.
+На одном экране должны быть видны WRITE_SECURE_SETTINGS, Button Mapper,
+Projectivy Launcher, optional TorrServe, optional v2RayTun/VPN, общий результат
+и подсказка `Для выхода нажмите HOME.`.
+
+Должна быть ровно одна action-кнопка:
+
+Восстановить спецвозможности
+
+Кнопки `Проверить снова`, `Завершить настройку`, `Диагностика` и
+`Восстановить сейчас` отсутствуют. Не нажимайте manual recovery, если экран уже
+показывает `Система готова к работе.`.
+
+ПРОВЕРКА ROUTING
 ----------------
 
-Обновление с совместимой подписью:
+adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER foxmitv.restorer
+adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER foxmitv.restorer
+adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.INFO foxmitv.restorer
 
-adb install -r FOX-MiTV-Restorer-4.0.0.apk
-adb shell pm grant com.mitv.accessibilityrestorer android.permission.WRITE_SECURE_SETTINGS
-adb shell dumpsys package com.mitv.accessibilityrestorer | grep -i WRITE_SECURE_SETTINGS
-adb shell pm path flar2.homebutton
-adb shell pm path com.spocky.projengmenu
-adb shell am force-stop com.spocky.projengmenu
-adb shell am start -W -n com.mitv.accessibilityrestorer/.MainActivity
+Ожидается:
 
-После запуска MainActivity дождитесь, пока обе службы станут Enabled и Bound:
+foxmitv.restorer/.MainActivity
+foxmitv.restorer/.ControlActivity
+No activity found / NO MATCH
 
-adb shell settings get secure enabled_accessibility_services
-adb shell dumpsys accessibility
-
-Только после этого проверьте HOME:
-
-adb shell input keyevent 3
-adb shell dumpsys window
-
-Ожидаемый foreground:
-
-com.spocky.projengmenu/com.spocky.projengmenu.ui.home.MainActivity
-
-После проверки откройте интерфейс Restorer:
-
-adb shell am start -n com.mitv.accessibilityrestorer/.ControlActivity
-
-Стандартная и ручная установка НЕ выполняют:
-
-settings put system start_3rd_app ...
-
-Пустое/null значение start_3rd_app допустимо. Restorer читает его только для
-диагностики; MISSING_UNARMED не является ошибкой.
-
-ПЕРВИЧНАЯ ПРОВЕРКА
-------------------
-
-adb shell dumpsys package com.mitv.accessibilityrestorer | grep -iE "versionCode|versionName|WRITE_SECURE_SETTINGS"
-adb shell settings get secure enabled_accessibility_services
-adb shell settings get secure accessibility_enabled
-adb shell settings get system start_3rd_app
-
-На экране Restorer:
-
-- Button Mapper и Projectivy Launcher являются обязательными core-компонентами;
-- TorrServe и v2RayTun помечены как необязательные;
-- отсутствие optional package/component не блокирует «Завершить настройку»;
-- «Восстановить сейчас» немедленно запускает ручное восстановление.
-
-ACCEPTANCE: СРАЗУ ПОСЛЕ INSTALL.cmd
------------------------------------
-
-До любого reboot проверьте:
-
-1. INSTALL.cmd показал Core recovery after install: READY.
-2. Button Mapper bound и Projectivy bound имеют значение YES.
-3. HOME -> Projectivy имеет значение OK.
-4. ControlActivity открылся после HOME test.
-5. Нажатие физической HOME сразу открывает Projectivy.
-
-Если любой пункт не выполнен, сохраните INSTALL-LOG.txt. Перезагрузка не должна
-использоваться как способ завершить первичную настройку.
-
-ACCEPTANCE: COLD BOOT
----------------------
-
-Эта проверка требует физического отключения питания телевизора. Перед ней
-оставьте start_3rd_app пустым/unarmed и не запускайте optional приложения руками.
-
-Очистите старый logcat и выключите ТВ:
-
-adb logcat -c
-adb shell settings get system start_3rd_app
-
-После полного отключения питания и завершения загрузки подключите ADB и выполните:
+ПРОВЕРКА ПЕРЕД COLD BOOT
+------------------------
 
 adb shell settings get secure enabled_accessibility_services
 adb shell settings get secure accessibility_enabled
 adb shell dumpsys accessibility
 adb shell dumpsys connectivity
-adb shell ps -A | grep -iE "projengmenu|homebutton|torrserve|v2ray"
-adb shell "logcat -d | grep -iE 'MiTVRestorer|accessibilityrestorer|AndroidRuntime'"
 
-Визуально обязательно: BLACK -> Projectivy. Окно, название, иконка или banner
-FOX MiTV Restorer не должны появляться даже кратковременно.
+Button Mapper, Projectivy и TorrServe должны быть Enabled/Bound при наличии
+пакетов. `Binding services:{}` и `Crashed services:{}` должны быть пустыми.
 
-Ожидаемый core-путь:
+COLD BOOT
+---------
 
-BOOT_COUNT changed
--> MAIN DECISION mode=BOOT_PENDING
--> EARLY_BOOT
--> Mapper + Projectivy
--> Projectivy final launch
--> SESSION FINISH success=true
+После полного выключения и включения ожидается:
 
-После получения Android BOOT_COMPLETED ожидается ровно один:
+BLACK -> Projectivy
 
-POST_BOOT_OPTIONAL gate check ... coreBootSuccess=true ...
-POST_BOOT_OPTIONAL_RECOVERY started
-POST_BOOT_OPTIONAL_RECOVERY FINISH ...
+Автоматический recovery не должен показывать ControlActivity. После загрузки:
 
-Если установлен TorrServe, GlobalTorrService должен присутствовать в
-enabled_accessibility_services и быть Bound. Его native server/process должен
-продолжать работать. Допустимые статусы:
+adb shell settings get secure enabled_accessibility_services
+adb shell settings get secure accessibility_enabled
+adb shell dumpsys accessibility
+adb shell dumpsys connectivity
+adb shell "logcat -d | grep -iE 'MiTVRestorer|foxmitv.restorer|AndroidRuntime'"
 
-RECOVERED
-ALREADY_ENABLED
-SKIPPED_NOT_INSTALLED
-SKIPPED_COMPONENT_UNAVAILABLE
-FAILED
+Ожидаются core SUCCESS, Projectivy foreground, Button Mapper/Projectivy Bound.
+TorrServe и v2RayTun остаются optional.
 
-Если установлен v2RayTun, ожидаются V2RayVpnService, VPN transport и tun0 без
-ручного запуска приложения. Допустимые статусы:
-
-CONNECTED
-ALREADY_ACTIVE
-SKIPPED_NOT_INSTALLED
-SKIPPED_COMPONENT_UNAVAILABLE
-TIMEOUT
-TRIGGER_FAILED
-
-Ошибка optional-интеграции не меняет уже записанный core success.
-
-ACCEPTANCE: РУЧНОЕ ОТКРЫТИЕ
----------------------------
-
-После завершённой загрузки откройте:
-
-В Android TV/Projectivy выберите карточку FOX MiTV Restorer.
-
-Проверьте системное разрешение entry points:
-
-adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.LAUNCHER com.mitv.accessibilityrestorer
-adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER com.mitv.accessibilityrestorer
-adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.INFO com.mitv.accessibilityrestorer
-
-Ожидается соответственно:
-
-com.mitv.accessibilityrestorer/.MainActivity
-com.mitv.accessibilityrestorer/.ControlActivity
-No activity found / NO MATCH
-
-Карточка FOX MiTV Restorer в Android TV/Projectivy должна открыть ControlActivity
-без RecoveryCover и recovery. Допустим также явный диагностический запуск:
-
-adb shell am start -n com.mitv.accessibilityrestorer/.ControlActivity
-
-В MainActivity не должно быть строк:
-
-mode=USER_UI
-reason=no_recovery_required
-MAIN ROUTE -> ControlActivity
-
-ACCEPTANCE: STR REGRESSION
---------------------------
-
-После cold-boot и manual-UI тестов выполните обычный цикл:
+STR REGRESSION
+--------------
 
 Sleep -> 30 секунд -> Wake
 
-Визуально обязательно: #474747 -> Projectivy. ControlActivity и любой branded UI
-Restorer появляться не должны.
+Визуально:
 
-Ожидается прежний путь:
+#474747 -> Projectivy
 
-RecoveryCover
--> STR SESSION START
--> Mapper recovery
--> Projectivy recovery
--> TorrServe в ALL_FINAL, если доступен
--> v2RayTun assist, если доступен
--> SESSION FINISH COMPLETED
--> Projectivy final foreground
-
-ControlActivity во время STR появляться не должна.
-
-Проверенные тайминги должны остаться:
+Проверенные тайминги:
 
 interactive settle = 500 ms
 ALL_INITIAL        = 2500 ms
@@ -255,25 +174,29 @@ BASE               = 1500 ms
 MAPPER             = 2500 ms
 ALL_FINAL          = 1500 ms
 
-Проверка после STR:
+После STR:
 
 adb shell settings get secure enabled_accessibility_services
 adb shell dumpsys accessibility
 adb shell dumpsys connectivity
 adb shell "logcat -d | grep -iE 'STR TIMING|STR RESET|V2RAY|MiTVRestorer|AndroidRuntime'"
 
-Проверьте версию в dumpsys и SESSION START:
+SESSION START и dumpsys package должны показывать versionCode=17.
+ControlActivity во время автоматического STR появляться не должна.
 
-adb shell dumpsys package com.mitv.accessibilityrestorer | grep -i versionCode
-adb shell "logcat -d | grep -i 'MiTVRestorer.*SESSION START'"
+БЕЗОПАСНОСТЬ
+------------
 
-Оба результата должны содержать versionCode=16.
+Не выполнять для связанных приложений:
 
-ФИЗИЧЕСКАЯ ПРОВЕРКА
---------------------
+pm clear flar2.homebutton
+pm clear com.spocky.projengmenu
+pm clear ru.yourok.torrserve
+pm clear com.v2raytun.android
 
-Recovery versionCode 15 физически подтверждён пользователем. При сборке
-versionCode 16 телевизор использовался только для read-only аудита установленного
-Projectivy; v16 на ТВ не устанавливался. Поэтому post-install HOME, compact UI,
-banner XS, один cold boot и один STR regression должны быть подтверждены на
-Xiaomi Mi TV S75 до публикации GitHub Release.
+Не записывать `Settings.System.start_3rd_app`: Restorer читает его только как
+advisory. Не использовать ADB-инъекцию HOME как замену физической кнопке пульта.
+
+Проверка package/UI versionCode 17 выполнена на реальном Xiaomi Mi TV S75. После
+readback телевизор полностью выключен командой `adb shell reboot -p`; cold boot
+после этого выполняет пользователь.

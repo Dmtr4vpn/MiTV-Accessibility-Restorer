@@ -1,4 +1,4 @@
-package com.mitv.accessibilityrestorer;
+package foxmitv.restorer;
 
 import android.content.ComponentName;
 import android.content.Context;

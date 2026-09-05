@@ -1,4 +1,4 @@
-package com.mitv.accessibilityrestorer;
+package foxmitv.restorer;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
