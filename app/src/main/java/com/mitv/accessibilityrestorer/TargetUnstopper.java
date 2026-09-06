@@ -1,4 +1,4 @@
-package foxmitv.restorer;
+package com.mitv.accessibilityrestorer;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -11,7 +11,7 @@ import android.util.Log;
 
 final class TargetUnstopper {
     static final String ACTION_UNSTOP_TARGET =
-            "foxmitv.restorer.action.UNSTOP_TARGET";
+            "com.mitv.accessibilityrestorer.action.UNSTOP_TARGET";
     static final long STOPPED_POLL_MS = 200L;
     static final long STOPPED_TIMEOUT_MS = 3_000L;
 

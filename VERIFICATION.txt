@@ -1,34 +1,34 @@
-FOX MiTV Restorer 4.0.0 / versionCode 17
+FOX MiTV Restorer 4.0.0 / versionCode 18
 VERIFICATION REPORT
 ========================================
 
 Base commit
 -----------
 
-536bc491676cd7bf913052cf5e0272eed3577325
+28b33b798a95cf8483e62c143332ef2615ffe828
 
 Identity
 --------
 
-package=foxmitv.restorer
-legacy package=com.mitv.accessibilityrestorer
+package=com.mitv.accessibilityrestorer
+erroneous v17 package=foxmitv.restorer
 application label=FOX MiTV Restorer
 versionName=4.0.0
-versionCode=17
+versionCode=18
 minSdkVersion=21
 targetSdkVersion=28
 compileSdkVersion=35
 
-The legacy package appears only in INSTALL.cmd migration logic and documentation
-that explicitly describes legacy removal. It is absent from the packaged
-Manifest, DEX and new component ownership.
+The erroneous v17 package appears only in INSTALL.cmd migration/uninstall logic
+and documentation that explicitly describes the v17 migration. It is absent
+from the packaged Manifest, DEX and new component ownership.
 
 APK
 ---
 
 File=FOX-MiTV-Restorer-4.0.0.apk
-size=648505 bytes
-SHA-256=569B890F2F3CA15953C172D4F992BF4EE4CAF9126F0E265995164AFAC02E2B3B
+size=648507 bytes
+SHA-256=A30CE33D9FC99466F3B9F3EF7BB8544883D542D51C1C700408764317505C8821
 
 apksigner verify --verbose --print-certs: PASS
 v1 signature=true
@@ -44,35 +44,34 @@ zipalign -c -v 4: PASS
 classes.dex
 -----------
 
-size=90644 bytes
-SHA-256=1C2BC7E1B2060FF6F87E65FAA0321C580B4D3848E1421C9BC4E10BF00D6FB1EE
+size=91608 bytes
+SHA-256=3E00C07070C364A901A639269F4E0AC98D660D0EBB3CAB77813FA117A6904473
 dexdump -d exit code=0
-dexdump output lines=14526
-dexdump stderr lines=0
+dexdump output lines=14859
 
-Required DEX classes are present under Lfoxmitv/restorer, including:
+Required DEX classes are present under Lcom/mitv/accessibilityrestorer:
 BootReceiver, RestoreReceiver, AccessibilityRestorer, MainActivity,
 ControlActivity, RecoveryEngine, RecoveryCoverActivity and V2RayVpnAssist.
 
-DEX old package string count=0
+DEX foxmitv.restorer string count=0
 DEX old button text count=0
 DEX "Восстановить спецвозможности" count=1
 
 Packaged Manifest and routing
 -----------------------------
 
-MAIN + LAUNCHER -> foxmitv.restorer/.MainActivity
-MAIN + LEANBACK_LAUNCHER -> foxmitv.restorer/.ControlActivity
+MAIN + LAUNCHER -> com.mitv.accessibilityrestorer/.MainActivity
+MAIN + LEANBACK_LAUNCHER -> com.mitv.accessibilityrestorer/.ControlActivity
 MAIN + INFO -> No activity found
 
 Activities:
-foxmitv.restorer/.MainActivity exported=true
-foxmitv.restorer/.ControlActivity exported=true
-foxmitv.restorer/.RecoveryCoverActivity exported=false
+com.mitv.accessibilityrestorer/.MainActivity exported=true
+com.mitv.accessibilityrestorer/.ControlActivity exported=true
+com.mitv.accessibilityrestorer/.RecoveryCoverActivity exported=false
 
 Receivers:
-foxmitv.restorer/.BootReceiver exported=true directBootAware=true
-foxmitv.restorer/.RestoreReceiver exported=false directBootAware=true
+com.mitv.accessibilityrestorer/.BootReceiver exported=true directBootAware=true
+com.mitv.accessibilityrestorer/.RestoreReceiver exported=false directBootAware=true
 
 Permissions:
 android.permission.RECEIVE_BOOT_COMPLETED
@@ -80,30 +79,25 @@ android.permission.WRITE_SECURE_SETTINGS
 android.permission.ACCESS_NETWORK_STATE
 
 INTERNET=absent
-WRITE_SETTINGS=absent
-WAKE_LOCK=absent
-Android Service/ForegroundService=absent
 CATEGORY_INFO=absent
+Android Service/ForegroundService=absent
 
-Recovery functional freeze
---------------------------
+Reverse package rename audit
+----------------------------
 
-For each file below, comparison with the v16 file from base commit after removing
-the first package declaration line returned BODY_MATCH=true:
+All 22 Java files were compared with v17 commit 28b33b7 after applying only:
+foxmitv.restorer -> com.mitv.accessibilityrestorer
 
-MainActivity.java
-RecoveryEngine.java
-RecoveryState.java
-BootReceiver.java
-RecoveryCoverActivity.java
-V2RayVpnAssist.java
+Result for every Java file: NORMALIZED_MATCH=true
 
-Only this declaration changed:
-package com.mitv.accessibilityrestorer;
--> package foxmitv.restorer;
+Mechanically required self-identity values:
+RecoveryTargets.RESTORER_PACKAGE=com.mitv.accessibilityrestorer
+RestoreReceiver action=com.mitv.accessibilityrestorer.action.RESTORE_AFTER_BOOT
+TargetUnstopper action=com.mitv.accessibilityrestorer.action.UNSTOP_TARGET
 
-Therefore the following are unchanged:
+Recovery logic changes: NONE
 
+Unchanged recovery contract:
 STR interactive settle=500 ms
 STR ALL_INITIAL=2500 ms
 STR BASE=1500 ms
@@ -118,57 +112,40 @@ Projectivy final launch
 start_3rd_app read-only/advisory behavior
 optional package handling
 
-Other internal Restorer files changed only package declarations and these
-mechanically required self-identity values:
-
-RecoveryTargets.RESTORER_PACKAGE=foxmitv.restorer
-RestoreReceiver action=foxmitv.restorer.action.RESTORE_AFTER_BOOT
-TargetUnstopper action=foxmitv.restorer.action.UNSTOP_TARGET
-
 External packages/components remain unchanged:
 flar2.homebutton
 com.spocky.projengmenu
 ru.yourok.torrserve
 com.v2raytun.android
 
+Branding/resource freeze
+------------------------
+
+git diff base..v18 for app/src/main/res: empty
+Banner Git blob base/current=93e6ff15d28fc200863523d10cd3ecfdd12727a8
+Banner=640x360 PNG, @drawable/restorer_banner
+Square icon=unchanged FOX artwork
+Application label=FOX MiTV Restorer
+STR cover=#474747
+
 ControlActivity UI
 ------------------
 
-Removed buttons:
-Проверить снова
-Завершить настройку
-Диагностика
-Восстановить сейчас
-
-Only action button:
-Восстановить спецвозможности -> existing RecoveryEngine.startStrRecovery with
-manual=true.
-
-Automatic refreshStatus calls:
-onCreate() after setContentView
-onResume()
-manual recovery callback before returning ControlActivity to foreground
-manual recovery start/failure state changes
-
-The main screen directly displays WRITE_SECURE_SETTINGS, Button Mapper,
-Projectivy, TorrServe, v2RayTun/VPN, overall readiness, last recovery and the
-permanent instruction "Для выхода нажмите HOME.". Optional packages do not make
-the core state fail. setup_completed storage remains available internally but no
-longer has a user action.
-
-Manual recovery was not pressed in the final device test because the status was
-normal. Static code verifies that its callback refreshes status and explicitly
-returns ControlActivity without modifying RecoveryEngine.
+Actual UIAutomator readback on Xiaomi Mi TV S75:
+Button count=1
+Button text=ВОССТАНОВИТЬ СПЕЦВОЗМОЖНОСТИ
+Old button text counts=0
+"Система готова к работе."=present
+"Для выхода нажмите HOME."=present
 
 INSTALL.cmd
 -----------
 
-RESTORER_PACKAGE=foxmitv.restorer
-LEGACY_RESTORER_PACKAGE=com.mitv.accessibilityrestorer
+RESTORER_PACKAGE=com.mitv.accessibilityrestorer
+LEGACY_RESTORER_PACKAGE=foxmitv.restorer
 
-VersionCode install/update/skip/no-downgrade logic is unchanged. When the new
-Restorer APK is processed, only the legacy Restorer is removed if present. A
-failed legacy uninstall blocks installation of the new Restorer.
+VersionCode install/update/skip/no-downgrade logic is unchanged. When the v18
+Restorer APK is processed, only the erroneous v17 Restorer is removed if present.
 
 READY remains five simultaneous conditions for two consecutive polls:
 Mapper Enabled, Projectivy Enabled, Mapper Bound, Projectivy Bound and Projectivy
@@ -178,69 +155,81 @@ Synthetic HOME injection/test=absent
 pm clear=absent
 start_3rd_app write=absent
 
-Physical TV installation and UI
--------------------------------
+Physical TV installation
+------------------------
 
 Device=Xiaomi Mi TV S75
 ADB serial=192.168.1.52:5555
 Initial ADB state=device
 
-Legacy before migration=installed
-adb uninstall com.mitv.accessibilityrestorer=Success
-Legacy after migration=absent
+foxmitv.restorer before migration=installed
+adb uninstall foxmitv.restorer=Success
+foxmitv.restorer after migration=absent
+com.mitv.accessibilityrestorer before install=absent
 
 adb install FOX-MiTV-Restorer-4.0.0.apk=Success
-adb shell pm grant foxmitv.restorer WRITE_SECURE_SETTINGS=exit 0
+adb shell pm grant com.mitv.accessibilityrestorer WRITE_SECURE_SETTINGS=exit 0
 
-Installed readback:
-versionCode=17
+Installed readback before reboot:
+versionCode=18 minSdk=21 targetSdk=28
 versionName=4.0.0
 android.permission.WRITE_SECURE_SETTINGS: granted=true
 stopped=false
 notLaunched=false
 
-Foreground after explicit launch:
-foxmitv.restorer/.ControlActivity
+Foreground immediately after explicit launch:
+com.mitv.accessibilityrestorer/.ControlActivity
 
-Physical UI screenshot:
-FOX-MiTV-Restorer-ControlActivity-1920x1080.png
-pixel size=1920x1080
-SHA-256=B017024591474FE3D51CA5A0077A1C6F00D41624BB778FB5BD1C8A958A3B5164
-
-UIAutomator readback:
-Button count=1
-Button text=ВОССТАНОВИТЬ СПЕЦВОЗМОЖНОСТИ
-Old button text counts=0
-"Система готова к работе."=present
-"Для выхода нажмите HOME."=present
-
-Accessibility before shutdown
------------------------------
-
-enabled_accessibility_services preserved:
-com.xiaomi.voicecontrol/.VoiceAccessibilityService
-com.xiaomi.mitv.karaoke.service/com.loostone.puremic.voice.service.accessibility.PuremicKeyService
-flar2.homebutton/a.i
-com.spocky.projengmenu/com.spocky.projengmenu.services.ProjectivyAccessibilityService
-ru.yourok.torrserve/ru.yourok.torrserve.server.local.services.GlobalTorrService
-
-accessibility_enabled=1
-Bound services=Projectivy Launcher, Button Mapper, TorrServe MatriX
+PRE-REBOOT Accessibility:
+enabled services preserved Xiaomi Voice/Karaoke entries plus Projectivy and
+Button Mapper.
+Bound services=Projectivy Launcher, Button Mapper
 Binding services={}
 Crashed services={}
 
-Shutdown
---------
+Reboot and post-reboot readback
+-------------------------------
 
-Executed command:
-adb shell reboot -p
+Executed command: adb reboot
+Command exit=0
+Device left ADB after 1 second with state=offline
+Device first returned after 24 seconds
+sys.boot_completed=1
 
-Result=Done
-command exit=0
-adb get-state after 12 seconds=error: device offline
-get-state exit=1
+The network ADB endpoint then went offline and port 5555 refused connections.
+After the user restored ADB debugging, Codex reconnected only to read state.
+No recovery command, setting change, application launch or second reboot was
+performed after the required reboot.
 
-No further TV action was performed. Physical cold boot is left to the user.
+POST-REBOOT readback:
+BOOT_COUNT=647
+versionCode=18 minSdk=21 targetSdk=28
+versionName=4.0.0
+stopped=false
+notLaunched=false
+
+enabled_accessibility_services preserved the existing Xiaomi Voice and Karaoke
+strings in their original form, and contained Button Mapper, Projectivy and
+TorrServe.
+
+Bound services=Button Mapper, TorrServe MatriX, Projectivy Launcher
+Binding services={}
+Crashed services={}
+
+Foreground at readback:
+com.mitv.tvhome/com.mitv.tvhome.MainActivityUserMode
+
+MiTVRestorer log proves Xiaomi automatic package launch was restored:
+MAIN DECISION mode=BOOT_PENDING, reason=boot_count_changed
+EARLY BOOT scheduled and started for BOOT_COUNT=647
+SESSION START versionName=4.0.0 versionCode=18 trigger=EARLY_BOOT
+SESSION FINISH success=true result=success coreRecoverySuccess=true
+accessibilitySuccess=true projectivyLaunch=true bootMarked=true durationMs=3136
+EARLY BOOT completed success=true, fallback=will be skipped
+
+This normal reboot readback proves the automatic Restorer entry ran again after
+restoring the Xiaomi-compatible package identity. It does not replace the user's
+separate physical cold-boot and STR acceptance tests.
 
 Publication
 -----------

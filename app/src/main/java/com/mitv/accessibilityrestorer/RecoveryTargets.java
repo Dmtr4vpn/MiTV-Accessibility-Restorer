@@ -1,9 +1,9 @@
-package foxmitv.restorer;
+package com.mitv.accessibilityrestorer;
 
 import android.content.ComponentName;
 
 final class RecoveryTargets {
-    static final String RESTORER_PACKAGE = "foxmitv.restorer";
+    static final String RESTORER_PACKAGE = "com.mitv.accessibilityrestorer";
     static final String PROJECTIVY_PACKAGE = "com.spocky.projengmenu";
     static final String MAPPER_PACKAGE = "flar2.homebutton";
     static final String MAPPER_UNSTOP_PRIMARY_FLAT = "flar2.homebutton/a.s";

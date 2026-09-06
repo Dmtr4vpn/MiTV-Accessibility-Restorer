@@ -13,8 +13,8 @@ set "APK_METADATA_OUTPUT=%TEMP%\mitv-apk-metadata-%RANDOM%-%RANDOM%.tmp"
 set "ACCESSIBILITY_OUTPUT=%TEMP%\mitv-accessibility-%RANDOM%-%RANDOM%.tmp"
 set "BOUND_STATUS_OUTPUT=%TEMP%\mitv-bound-status-%RANDOM%-%RANDOM%.tmp"
 set "WINDOW_OUTPUT=%TEMP%\mitv-window-%RANDOM%-%RANDOM%.tmp"
-set "RESTORER_PACKAGE=foxmitv.restorer"
-set "LEGACY_RESTORER_PACKAGE=com.mitv.accessibilityrestorer"
+set "RESTORER_PACKAGE=com.mitv.accessibilityrestorer"
+set "LEGACY_RESTORER_PACKAGE=foxmitv.restorer"
 
 set /a APK_TOTAL=0
 set /a APK_INDEX=0

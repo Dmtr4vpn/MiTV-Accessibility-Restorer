@@ -1,4 +1,4 @@
-package foxmitv.restorer;
+package com.mitv.accessibilityrestorer;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -7,7 +7,7 @@ import android.util.Log;
 
 public final class RestoreReceiver extends BroadcastReceiver {
     static final String ACTION_RESTORE_AFTER_BOOT =
-            "foxmitv.restorer.action.RESTORE_AFTER_BOOT";
+            "com.mitv.accessibilityrestorer.action.RESTORE_AFTER_BOOT";
     static final String EXTRA_BOOT_SESSION = "boot_session";
 
     @Override
