@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
+import android.provider.Settings;
 
 final class SetupStatus {
     private SetupStatus() {
@@ -31,21 +32,30 @@ final class SetupStatus {
                 && accessibilityServiceExists(
                 packageManager, TorrServeTarget.ACCESSIBILITY_SERVICE);
         boolean v2RayPackage = packageExists(packageManager, V2RayVpnAssist.PACKAGE_NAME);
-        boolean v2RayComponent = v2RayPackage
-                && V2RayVpnAssist.isWidgetReceiverAvailable(appContext);
         boolean secureSettingsGranted = hasSecureSettingsPermission(appContext);
+        boolean accessibilityEnabled = isAccessibilityEnabled(appContext);
+        String enabledServices = readEnabledAccessibilityServices(appContext);
+        boolean mapperEnabled = containsExactToken(
+                enabledServices, RecoveryTargets.MAPPER_SERVICE.flattenToString());
+        boolean projectivyEnabled = containsExactToken(
+                enabledServices, RecoveryTargets.PROJECTIVY_SERVICE.flattenToString());
+        boolean torrServeEnabled = containsExactToken(
+                enabledServices, TorrServeTarget.ACCESSIBILITY_SERVICE_FLAT);
         boolean markedComplete = SetupState.isMarkedComplete(appContext);
 
         return new Snapshot(
                 secureSettingsGranted,
+                accessibilityEnabled,
                 mapperPackage,
                 mapperService,
+                mapperEnabled,
                 projectivyPackage,
                 projectivyService,
+                projectivyEnabled,
                 torrServePackage,
                 torrServeService,
+                torrServeEnabled,
                 v2RayPackage,
-                v2RayComponent,
                 markedComplete);
     }
 
@@ -57,6 +67,40 @@ final class SetupStatus {
         return context.getPackageManager().checkPermission(
                 Manifest.permission.WRITE_SECURE_SETTINGS,
                 context.getPackageName()) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private static boolean isAccessibilityEnabled(Context context) {
+        try {
+            return Settings.Secure.getInt(
+                    context.getContentResolver(),
+                    Settings.Secure.ACCESSIBILITY_ENABLED,
+                    0) == 1;
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private static String readEnabledAccessibilityServices(Context context) {
+        try {
+            return Settings.Secure.getString(
+                    context.getContentResolver(),
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private static boolean containsExactToken(String rawServices, String target) {
+        if (rawServices == null || rawServices.isEmpty()) {
+            return false;
+        }
+        String[] tokens = rawServices.split(":", -1);
+        for (String token : tokens) {
+            if (target.equals(token)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean packageExists(PackageManager packageManager, String packageName) {
@@ -85,43 +129,55 @@ final class SetupStatus {
 
     static final class Snapshot {
         final boolean secureSettingsGranted;
+        final boolean accessibilityEnabled;
         final boolean mapperPackage;
         final boolean mapperService;
+        final boolean mapperEnabled;
         final boolean projectivyPackage;
         final boolean projectivyService;
+        final boolean projectivyEnabled;
         final boolean torrServePackage;
         final boolean torrServeService;
+        final boolean torrServeEnabled;
         final boolean v2RayPackage;
-        final boolean v2RayComponent;
         final boolean markedComplete;
         final boolean mainComponentsReady;
         final boolean setupComplete;
 
         Snapshot(
                 boolean secureSettingsGranted,
+                boolean accessibilityEnabled,
                 boolean mapperPackage,
                 boolean mapperService,
+                boolean mapperEnabled,
                 boolean projectivyPackage,
                 boolean projectivyService,
+                boolean projectivyEnabled,
                 boolean torrServePackage,
                 boolean torrServeService,
+                boolean torrServeEnabled,
                 boolean v2RayPackage,
-                boolean v2RayComponent,
                 boolean markedComplete) {
             this.secureSettingsGranted = secureSettingsGranted;
+            this.accessibilityEnabled = accessibilityEnabled;
             this.mapperPackage = mapperPackage;
             this.mapperService = mapperService;
+            this.mapperEnabled = mapperEnabled;
             this.projectivyPackage = projectivyPackage;
             this.projectivyService = projectivyService;
+            this.projectivyEnabled = projectivyEnabled;
             this.torrServePackage = torrServePackage;
             this.torrServeService = torrServeService;
+            this.torrServeEnabled = torrServeEnabled;
             this.v2RayPackage = v2RayPackage;
-            this.v2RayComponent = v2RayComponent;
             this.markedComplete = markedComplete;
-            this.mainComponentsReady = mapperPackage
+            this.mainComponentsReady = accessibilityEnabled
+                    && mapperPackage
                     && mapperService
+                    && mapperEnabled
                     && projectivyPackage
-                    && projectivyService;
+                    && projectivyService
+                    && projectivyEnabled;
             this.setupComplete = markedComplete
                     && secureSettingsGranted
                     && mainComponentsReady;

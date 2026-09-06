@@ -129,26 +129,49 @@ public final class ControlActivity extends Activity {
         titleView.setText(getApplicationInfo().loadLabel(getPackageManager())
                 + " " + version.name);
 
-        boolean systemReady = snapshot.secureSettingsGranted
-                && snapshot.mainComponentsReady;
+        boolean systemReady = snapshot.secureSettingsGranted && snapshot.mainComponentsReady;
+        String vpnState = snapshot.v2RayPackage
+                ? V2RayVpnAssist.getVpnStateForStatus(this)
+                : null;
+        boolean optionalIssue = (snapshot.torrServePackage
+                && (!snapshot.accessibilityEnabled
+                || !snapshot.torrServeService
+                || !snapshot.torrServeEnabled))
+                || (snapshot.v2RayPackage && !"true".equals(vpnState));
         headingView.setText(systemReady
-                ? "Система готова к работе."
+                ? optionalIssue
+                        ? "Система готова к работе.\nНекоторые необязательные компоненты не активны."
+                        : "Система готова к работе."
                 : "Требуется восстановление.");
 
         StringBuilder text = new StringBuilder();
         text.append(snapshot.secureSettingsGranted ? "✓ " : "✗ ")
-                .append("WRITE_SECURE_SETTINGS")
-                .append(snapshot.secureSettingsGranted ? " активирован" : " НЕ АКТИВИРОВАН")
+                .append("Разрешение управления спецвозможностями — ")
+                .append(snapshot.secureSettingsGranted ? "выдано" : "не выдано")
+                .append("\n  WRITE_SECURE_SETTINGS")
                 .append('\n');
         appendMainComponent(
-                text, "Button Mapper", snapshot.mapperPackage, snapshot.mapperService);
+                text,
+                "Button Mapper",
+                snapshot.accessibilityEnabled,
+                snapshot.mapperPackage,
+                snapshot.mapperService,
+                snapshot.mapperEnabled);
         appendMainComponent(
-                text, "Projectivy Launcher",
+                text,
+                "Projectivy Launcher",
+                snapshot.accessibilityEnabled,
                 snapshot.projectivyPackage,
-                snapshot.projectivyService);
+                snapshot.projectivyService,
+                snapshot.projectivyEnabled);
         appendOptionalComponent(
-                text, "TorrServe", snapshot.torrServePackage, snapshot.torrServeService);
-        appendV2RayStatus(text, snapshot);
+                text,
+                "TorrServe",
+                snapshot.accessibilityEnabled,
+                snapshot.torrServePackage,
+                snapshot.torrServeService,
+                snapshot.torrServeEnabled);
+        appendV2RayStatus(text, snapshot.v2RayPackage, vpnState);
 
         long lastTime = AppStatus.getLastTime(this);
         if (lastTime > 0L) {
@@ -174,45 +197,56 @@ public final class ControlActivity extends Activity {
     }
 
     private static void appendMainComponent(
-            StringBuilder text, String label, boolean packageFound, boolean serviceFound) {
-        if (packageFound && serviceFound) {
-            text.append("✓ ").append(label).append(" найден\n");
-        } else if (packageFound) {
-            text.append("✗ ").append(label).append(": AccessibilityService не найден\n");
+            StringBuilder text,
+            String label,
+            boolean accessibilityEnabled,
+            boolean packageFound,
+            boolean serviceFound,
+            boolean serviceEnabled) {
+        if (!packageFound) {
+            text.append("✗ ").append(label).append(" — не установлен\n");
+        } else if (!serviceFound) {
+            text.append("✗ ").append(label)
+                    .append(" — служба спецвозможностей не найдена\n");
+        } else if (!accessibilityEnabled || !serviceEnabled) {
+            text.append("✗ ").append(label)
+                    .append(" — спецвозможности выключены\n");
         } else {
-            text.append("✗ ").append(label).append(" не установлен\n");
+            text.append("✓ ").append(label)
+                    .append(" — спецвозможности включены\n");
         }
     }
 
     private static void appendOptionalComponent(
-            StringBuilder text, String label, boolean packageFound, boolean serviceFound) {
-        if (packageFound && serviceFound) {
-            text.append("✓ ").append(label).append(" найден (необязательно)\n");
-        } else if (packageFound) {
-            text.append("○ ").append(label)
-                    .append(": AccessibilityService не найден (необязательно)\n");
+            StringBuilder text,
+            String label,
+            boolean accessibilityEnabled,
+            boolean packageFound,
+            boolean serviceFound,
+            boolean serviceEnabled) {
+        if (!packageFound) {
+            text.append("○ ").append(label).append(" — не установлен (необязательно)\n");
+        } else if (!serviceFound || !accessibilityEnabled || !serviceEnabled) {
+            text.append("! ").append(label)
+                    .append(" — спецвозможности выключены (необязательно)\n");
         } else {
-            text.append("○ ").append(label).append(" не установлен (необязательно)\n");
+            text.append("✓ ").append(label)
+                    .append(" — спецвозможности включены (необязательно)\n");
         }
     }
 
-    private void appendV2RayStatus(StringBuilder text, SetupStatus.Snapshot snapshot) {
-        if (!snapshot.v2RayPackage) {
-            text.append("○ v2RayTun не установлен (необязательно)\n");
+    private static void appendV2RayStatus(
+            StringBuilder text, boolean packageFound, String vpnState) {
+        if (!packageFound) {
+            text.append("○ v2RayTun — не установлен (необязательно)\n");
             return;
         }
-        if (!snapshot.v2RayComponent) {
-            text.append("○ v2RayTun: WidgetProvider не найден (необязательно)\n");
-            return;
-        }
-
-        String vpnState = V2RayVpnAssist.getVpnStateForStatus(this);
         if ("true".equals(vpnState)) {
-            text.append("✓ v2RayTun / VPN активен (необязательно)\n");
+            text.append("✓ v2RayTun — VPN подключён (необязательно)\n");
         } else if ("false".equals(vpnState)) {
-            text.append("○ v2RayTun найден, VPN неактивен (необязательно)\n");
+            text.append("! v2RayTun — VPN не подключён (необязательно)\n");
         } else {
-            text.append("○ v2RayTun найден, состояние VPN неизвестно (необязательно)\n");
+            text.append("! v2RayTun — состояние VPN недоступно (необязательно)\n");
         }
     }
 

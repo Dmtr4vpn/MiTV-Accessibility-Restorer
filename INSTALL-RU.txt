@@ -1,9 +1,8 @@
 FOX MiTV Restorer 4.0.0
 =======================
 
-Версия: 4.0.0 (versionCode 18)
+Версия: 4.0.0 (versionCode 19)
 Package: com.mitv.accessibilityrestorer
-Ошибочный package v17: foxmitv.restorer
 
 СТАНДАРТНАЯ УСТАНОВКА
 ---------------------
@@ -18,12 +17,12 @@ ADBAppControl-1.8.6\
 
 1. Включите ADB debugging на телевизоре.
 2. Запустите INSTALL.cmd.
-3. Если соединение отсутствует, введите IP/порт или выполните Wireless Debugging
-   pairing по подсказкам скрипта.
-4. Один раз подтвердите RSA-доступ на телевизоре, если появится запрос.
+3. При отсутствии соединения следуйте подсказкам для IP/порта или Wireless
+   Debugging pairing.
+4. При первом соединении подтвердите RSA-доступ на телевизоре.
 5. Дождитесь итогового резюме.
 
-INSTALL.cmd каждый раз очищает INSTALL-LOG.txt и обрабатывает все APK из
+INSTALL.cmd очищает INSTALL-LOG.txt при каждом запуске и обрабатывает все APK из
 install\ по versionCode:
 
 package отсутствует                 -> INSTALL
@@ -31,85 +30,67 @@ installedVersionCode < apkVersion   -> UPDATE через adb install -r
 installedVersionCode = apkVersion   -> SKIP INSTALL
 installedVersionCode > apkVersion   -> SKIP, downgrade запрещён
 
-При обработке `com.mitv.accessibilityrestorer` скрипт сначала проверяет
-ошибочный v17 package `foxmitv.restorer`. Если он установлен, удаляется только
-этот Restorer. Если удалить его не удалось, v18 не устанавливается, чтобы на ТВ
-не осталось два автоматических recovery-приложения.
-
-Projectivy, Button Mapper, TorrServe и v2RayTun не удаляются и не очищаются.
-
-POST-INSTALL READY
-------------------
-
-После установки или SKIP Restorer скрипт:
+Для Restorer скрипт после установки или SKIP:
 
 1. Выдаёт и проверяет WRITE_SECURE_SETTINGS.
 2. Проверяет наличие Button Mapper и Projectivy.
-3. Выполняет `am force-stop com.spocky.projengmenu` без очистки данных.
-4. Запускает `com.mitv.accessibilityrestorer/.MainActivity`.
+3. Перезапускает Projectivy без очистки данных.
+4. Запускает com.mitv.accessibilityrestorer/.MainActivity.
 5. До 30 секунд опрашивает состояние с интервалом 1000 ms.
 
-READY требует пять условий два polling cycle подряд:
+READY требует два успешных polling cycle подряд:
 
 - Button Mapper Enabled;
 - Projectivy Enabled;
 - Button Mapper Bound;
 - Projectivy Bound;
-- Projectivy home находится в foreground.
+- Projectivy home в foreground.
 
-После READY сразу открывается
-`com.mitv.accessibilityrestorer/.ControlActivity`.
-Синтетический HOME test через ADB не выполняется.
+После READY открывается com.mitv.accessibilityrestorer/.ControlActivity.
+Синтетическая HOME через ADB не выполняется.
 
-После установки нажмите физическую кнопку HOME на пульте.
+Нажмите физическую кнопку HOME на пульте.
 Ожидаемый результат: Projectivy Launcher.
 
-РУЧНАЯ ЧИСТАЯ УСТАНОВКА V18
----------------------------
+ОБНОВЛЕНИЕ V18 -> V19 ВРУЧНУЮ
+-----------------------------
 
-Проверьте и удалите ошибочный v17 package:
-
-adb shell pm path foxmitv.restorer
-adb uninstall foxmitv.restorer
-adb shell pm path foxmitv.restorer
-
-Для чистой установки также удалите только прежний Restorer с финальным package,
-если он установлен:
-
-adb shell pm path com.mitv.accessibilityrestorer
-adb uninstall com.mitv.accessibilityrestorer
-
-Не удаляйте Projectivy, Button Mapper, TorrServe или v2RayTun.
-
-Установите v18, выдайте разрешение и явно запустите UI:
-
-adb install FOX-MiTV-Restorer-4.0.0.apk
+adb install -r FOX-MiTV-Restorer-4.0.0.apk
 adb shell pm grant com.mitv.accessibilityrestorer android.permission.WRITE_SECURE_SETTINGS
-adb shell dumpsys package com.mitv.accessibilityrestorer | grep -iE "versionCode|versionName|WRITE_SECURE_SETTINGS|stopped"
 adb shell am start -n com.mitv.accessibilityrestorer/.ControlActivity
 
 Ожидается:
 
-versionCode=18
+versionCode=19
 versionName=4.0.0
 android.permission.WRITE_SECURE_SETTINGS: granted=true
 stopped=false
 
-ПРОВЕРКА ПОЛЬЗОВАТЕЛЬСКОГО ЭКРАНА
----------------------------------
+ЭКРАН СОСТОЯНИЯ
+---------------
 
-ControlActivity автоматически обновляет статусы при открытии и возврате в окно.
-На одном экране должны быть видны WRITE_SECURE_SETTINGS, Button Mapper,
-Projectivy Launcher, optional TorrServe, optional v2RayTun/VPN, общий результат
-и подсказка `Для выхода нажмите HOME.`.
+При исправной системе экран показывает:
 
-Должна быть ровно одна action-кнопка:
+✓ Разрешение управления спецвозможностями — выдано
+  WRITE_SECURE_SETTINGS
+✓ Button Mapper — спецвозможности включены
+✓ Projectivy Launcher — спецвозможности включены
+✓ TorrServe — спецвозможности включены (необязательно)
+✓ v2RayTun — VPN подключён (необязательно)
+
+Система готова к работе.
+Для выхода нажмите HOME.
+
+Bound в UI не показывается, потому что обычное приложение не может доказать его
+через публичный Android API. Для Bound используйте ADB:
+
+adb shell dumpsys accessibility
+
+Кнопка на экране одна:
 
 Восстановить спецвозможности
 
-Кнопки `Проверить снова`, `Завершить настройку`, `Диагностика` и
-`Восстановить сейчас` отсутствуют. Не нажимайте manual recovery, если экран уже
-показывает `Система готова к работе.`.
+Не нажимайте её, если экран уже показывает, что система готова.
 
 ПРОВЕРКА ROUTING
 ----------------
@@ -124,62 +105,44 @@ com.mitv.accessibilityrestorer/.MainActivity
 com.mitv.accessibilityrestorer/.ControlActivity
 No activity found / NO MATCH
 
-ПРОВЕРКА ПОСЛЕ ОБЫЧНОЙ ПЕРЕЗАГРУЗКИ
------------------------------------
+ПРОВЕРКА COLD BOOT И STR
+-----------------------
 
-adb reboot
-
-После возвращения ADB и `sys.boot_completed=1`:
-
-adb shell settings get global boot_count
-adb shell dumpsys package com.mitv.accessibilityrestorer
-adb shell settings get secure enabled_accessibility_services
-adb shell dumpsys accessibility
-adb shell dumpsys window | grep -iE "mCurrentFocus|mFocusedApp"
-adb shell "logcat -d -v time | grep -iE 'MiTVRestorer.*(MAIN DECISION|EARLY BOOT|SESSION START|SESSION FINISH)' | tail -n 80"
-
-Эта проверка показывает, вернулся ли автоматический запуск после восстановления
-Xiaomi-compatible package identity. Полный cold boot и STR пользователь проверяет
-отдельно.
-
-COLD BOOT
----------
-
-После полного выключения и включения ожидается:
+Cold boot:
 
 BLACK -> Projectivy
 
-Автоматический recovery не должен показывать ControlActivity.
-
-STR REGRESSION
---------------
+STR:
 
 Sleep -> 30 секунд -> Wake
-
-Визуально:
-
 #474747 -> Projectivy
 
-Проверенные тайминги:
+После каждого сценария проверьте физическую HOME. Она должна открывать
+Projectivy. Не заменяйте эту проверку ADB keyevent.
 
-interactive settle = 500 ms
-ALL_INITIAL        = 2500 ms
-BASE               = 1500 ms
-MAPPER             = 2500 ms
-ALL_FINAL          = 1500 ms
+ADB READBACK
+------------
 
-SESSION START и dumpsys package должны показывать versionCode=18.
-ControlActivity во время автоматического STR появляться не должна.
+adb shell dumpsys package com.mitv.accessibilityrestorer
+adb shell settings get secure accessibility_enabled
+adb shell settings get secure enabled_accessibility_services
+adb shell dumpsys accessibility
+adb shell dumpsys connectivity
+adb shell dumpsys window
 
 БЕЗОПАСНОСТЬ
 ------------
 
-Не выполнять для связанных приложений:
+Не выполнять:
 
 pm clear flar2.homebutton
 pm clear com.spocky.projengmenu
 pm clear ru.yourok.torrserve
 pm clear com.v2raytun.android
 
-Не записывать `Settings.System.start_3rd_app`: Restorer читает его только как
-advisory. Не использовать ADB-инъекцию HOME как замену физической кнопке пульта.
+Для исправления XS artwork Projectivy в v19 очистка данных не требуется.
+`pm clear com.spocky.projengmenu` не выполнялся.
+
+Ошибочный тестовый package `foxmitv.restorer`, если он остался от v17, можно
+удалить отдельно: `adb uninstall foxmitv.restorer`. Это не затрагивает текущий
+package `com.mitv.accessibilityrestorer`.

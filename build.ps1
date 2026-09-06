@@ -58,7 +58,7 @@ $FinalApk = Join-Path $DistDir "FOX-MiTV-Restorer-4.0.0.apk"
 if ($LASTEXITCODE -ne 0) { throw "aapt2 compile failed" }
 
 $CompiledResources = Get-ChildItem -LiteralPath $CompiledResDir -File | ForEach-Object { $_.FullName }
-& $Aapt2 link -I $AndroidJar --manifest $Manifest --min-sdk-version 21 --target-sdk-version 28 --version-code 18 --version-name "4.0.0" -o $ResourcesApk $CompiledResources
+& $Aapt2 link -I $AndroidJar --manifest $Manifest --min-sdk-version 21 --target-sdk-version 28 --version-code 19 --version-name "4.0.0" -o $ResourcesApk $CompiledResources
 if ($LASTEXITCODE -ne 0) { throw "aapt2 link failed" }
 
 $JavaSources = Get-ChildItem -LiteralPath $JavaSourceDir -Recurse -Filter "*.java" | ForEach-Object { $_.FullName }
