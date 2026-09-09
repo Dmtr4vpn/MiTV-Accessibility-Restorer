@@ -3,6 +3,7 @@ FOX MiTV Restorer 4.0.0
 
 Версия: 4.0.0 (versionCode 19)
 Package: com.mitv.accessibilityrestorer
+Проверенная платформа: Xiaomi Mi TV S75, MiTV OS 2.8.1712, Android 11
 
 СТАНДАРТНАЯ УСТАНОВКА
 ---------------------
@@ -23,17 +24,17 @@ ADBAppControl-1.8.6\
 5. Дождитесь итогового резюме.
 
 INSTALL.cmd очищает INSTALL-LOG.txt при каждом запуске и обрабатывает все APK из
-install\ по versionCode:
+папки install по versionCode:
 
 package отсутствует                 -> INSTALL
 installedVersionCode < apkVersion   -> UPDATE через adb install -r
 installedVersionCode = apkVersion   -> SKIP INSTALL
 installedVersionCode > apkVersion   -> SKIP, downgrade запрещён
 
-Для Restorer скрипт после установки или SKIP:
+Для FOX MiTV Restorer скрипт:
 
 1. Выдаёт и проверяет WRITE_SECURE_SETTINGS.
-2. Проверяет наличие Button Mapper и Projectivy.
+2. Проверяет Button Mapper и Projectivy Launcher.
 3. Перезапускает Projectivy без очистки данных.
 4. Запускает com.mitv.accessibilityrestorer/.MainActivity.
 5. До 30 секунд опрашивает состояние с интервалом 1000 ms.
@@ -52,12 +53,16 @@ READY требует два успешных polling cycle подряд:
 Нажмите физическую кнопку HOME на пульте.
 Ожидаемый результат: Projectivy Launcher.
 
-ОБНОВЛЕНИЕ V18 -> V19 ВРУЧНУЮ
------------------------------
+РУЧНАЯ УСТАНОВКА ИЛИ ОБНОВЛЕНИЕ
+-------------------------------
 
 adb install -r FOX-MiTV-Restorer-4.0.0.apk
 adb shell pm grant com.mitv.accessibilityrestorer android.permission.WRITE_SECURE_SETTINGS
 adb shell am start -n com.mitv.accessibilityrestorer/.ControlActivity
+
+Проверьте:
+
+adb shell dumpsys package com.mitv.accessibilityrestorer
 
 Ожидается:
 
@@ -81,16 +86,15 @@ stopped=false
 Система готова к работе.
 Для выхода нажмите HOME.
 
-Bound в UI не показывается, потому что обычное приложение не может доказать его
-через публичный Android API. Для Bound используйте ADB:
+Статус Bound в UI не показывается. Для его проверки используйте:
 
 adb shell dumpsys accessibility
 
-Кнопка на экране одна:
+На экране одна кнопка:
 
 Восстановить спецвозможности
 
-Не нажимайте её, если экран уже показывает, что система готова.
+Не нажимайте её, если система уже готова к работе.
 
 ПРОВЕРКА ROUTING
 ----------------
@@ -118,12 +122,11 @@ Sleep -> 30 секунд -> Wake
 #474747 -> Projectivy
 
 После каждого сценария проверьте физическую HOME. Она должна открывать
-Projectivy. Не заменяйте эту проверку ADB keyevent.
+Projectivy Launcher. Не заменяйте эту проверку ADB keyevent.
 
-ADB READBACK
-------------
+ДИАГНОСТИЧЕСКИЙ READBACK
+------------------------
 
-adb shell dumpsys package com.mitv.accessibilityrestorer
 adb shell settings get secure accessibility_enabled
 adb shell settings get secure enabled_accessibility_services
 adb shell dumpsys accessibility
@@ -133,16 +136,6 @@ adb shell dumpsys window
 БЕЗОПАСНОСТЬ
 ------------
 
-Не выполнять:
-
-pm clear flar2.homebutton
-pm clear com.spocky.projengmenu
-pm clear ru.yourok.torrserve
-pm clear com.v2raytun.android
-
-Для исправления XS artwork Projectivy в v19 очистка данных не требуется.
-`pm clear com.spocky.projengmenu` не выполнялся.
-
-Ошибочный тестовый package `foxmitv.restorer`, если он остался от v17, можно
-удалить отдельно: `adb uninstall foxmitv.restorer`. Это не затрагивает текущий
-package `com.mitv.accessibilityrestorer`.
+Не очищайте данные Button Mapper, Projectivy, TorrServe или v2RayTun при обычной
+установке и проверке Restorer. Установщик и приложение не меняют Android default
+HOME и не очищают настройки сторонних приложений.

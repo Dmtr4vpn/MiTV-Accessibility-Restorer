@@ -1,13 +1,8 @@
-FOX MiTV Restorer 4.0.0 / versionCode 19
+FOX MiTV Restorer 4.0.0
 VERIFICATION REPORT
 ========================================
 
-Base commit
------------
-
-8e0f3d77a4aa7c1d16a75a4024345efe4b5dad8b
-
-Identity
+IDENTITY
 --------
 
 package=com.mitv.accessibilityrestorer
@@ -25,7 +20,7 @@ File=FOX-MiTV-Restorer-4.0.0.apk
 size=648591 bytes
 SHA-256=DE16A4A0CC9CB477EFEC7821F6CE45DDFAAF000BFC9EF4C81D1ACFA0D820060A
 
-apksigner verify --verbose --print-certs: PASS
+apksigner verify --verbose --print-certs=PASS
 v1 signature=true
 v2 signature=true
 v3 signature=true
@@ -34,28 +29,33 @@ number of signers=1
 Signing certificate SHA-256:
 646A700698CE0790D6B7F0396D8192E6A093544934E2F7F065F8726E0D3638F5
 
-zipalign -c -v 4: PASS
+zipalign -c -v 4=PASS
 
-classes.dex
+CLASSES.DEX
 -----------
 
 size=92652 bytes
 SHA-256=EA59AE1113A3703DA13EDBBE94D9921F1D443D66C9364ECB6FE7761F4AFF8EFE
-dexdump -d exit code=0
-dexdump output lines=15044
+dexdump -d=PASS
 classes.dex count in APK=1
 
 Required classes present:
-BootReceiver, RestoreReceiver, AccessibilityRestorer, MainActivity,
-ControlActivity, RecoveryEngine, RecoveryCoverActivity, V2RayVpnAssist,
-SetupStatus.
+BootReceiver
+RestoreReceiver
+AccessibilityRestorer
+MainActivity
+ControlActivity
+RecoveryEngine
+RecoveryCoverActivity
+V2RayVpnAssist
+SetupStatus
 
-Manifest and routing
+MANIFEST AND ROUTING
 --------------------
 
 MAIN + LAUNCHER -> com.mitv.accessibilityrestorer/.MainActivity
 MAIN + LEANBACK_LAUNCHER -> com.mitv.accessibilityrestorer/.ControlActivity
-MAIN + INFO -> No activity found
+MAIN + INFO -> NO MATCH
 
 Permissions:
 android.permission.RECEIVE_BOOT_COMPLETED
@@ -68,211 +68,103 @@ WRITE_SETTINGS=absent
 CATEGORY_INFO=absent
 Android service/foreground-service manifest elements=0
 
-Recovery freeze
----------------
+RECOVERY
+--------
 
-The following working-tree Git blobs exactly match base commit 8e0f3d77:
+Direct Boot=present
+BOOT_COUNT session protection=present
+EARLY_BOOT=present
+BOOT_FALLBACK=present
+STR sequence=ALL_INITIAL -> BASE -> MAPPER -> ALL_FINAL
+Projectivy final launch=present
+Button Mapper recovery=present
+TorrServe optional recovery=present
+V2RayTun optional recovery=present
+start_3rd_app=read-only/advisory
+STR RecoveryCover=#474747
+cold-boot trampoline=black
+repeating alarm=absent
+persistent Service=absent
 
-MainActivity.java
-RecoveryEngine.java
-RecoveryState.java
-BootReceiver.java
-RecoveryCoverActivity.java
-PostBootOptionalRecovery.java
-V2RayVpnAssist.java
-TargetUnstopper.java
-TorrServeTarget.java
-VendorStartApp.java
+CONTROL ACTIVITY
+----------------
 
-Recovery logic changes: NONE
+Automatic status refresh:
+onCreate=present
+onResume=present
+manual recovery success callback=present
+manual recovery error callback=present
 
-Unchanged:
-Direct Boot and BOOT_COUNT
-EARLY_BOOT and BOOT_FALLBACK
-cold-boot and STR timings
-ALL_INITIAL -> BASE -> MAPPER -> ALL_FINAL
-Projectivy final launch
-Button Mapper recovery
-TorrServe recovery
-V2RayVpnAssist
-start_3rd_app read-only/advisory behavior
-RecoveryCover #474747
-black cold-boot trampoline
+Status checks:
+WRITE_SECURE_SETTINGS=actual permission grant
+Accessibility master=Settings.Secure.ACCESSIBILITY_ENABLED
+Button Mapper=package + component + exact enabled service token
+Projectivy Launcher=package + component + exact enabled service token
+TorrServe=optional package + component + exact enabled service token
+v2RayTun=optional package + current ConnectivityManager VPN transport
 
-ControlActivity status logic
-----------------------------
+UI Bound claim=absent
+action button count=1
+action button=ВОССТАНОВИТЬ СПЕЦВОЗМОЖНОСТИ
 
-WRITE_SECURE_SETTINGS: checkSelfPermission/checkPermission.
-Accessibility master: Settings.Secure.ACCESSIBILITY_ENABLED == 1.
-Button Mapper: package + BIND_ACCESSIBILITY_SERVICE component + exact raw token
-flar2.homebutton/a.i in ENABLED_ACCESSIBILITY_SERVICES.
-Projectivy: package + BIND_ACCESSIBILITY_SERVICE component + exact raw token
-com.spocky.projengmenu/com.spocky.projengmenu.services.ProjectivyAccessibilityService.
-TorrServe optional: package + component + exact raw token
-ru.yourok.torrserve/ru.yourok.torrserve.server.local.services.GlobalTorrService.
-v2RayTun optional: package + current ConnectivityManager VPN transport.
+ARTWORK
+-------
 
-The inspector is read-only. It does not write Settings or start recovery/apps.
-Existing enabled service strings are not normalized or modified by inspection.
-UI does not claim or display Bound.
-Optional package absence/failure does not affect core readiness.
+Application icon=@mipmap/ic_launcher
+Application round icon=@mipmap/ic_launcher_round
+Application banner=@drawable/restorer_banner_fox
+ControlActivity banner=@drawable/restorer_banner_fox
+Packaged banner=res/drawable-nodpi-v4/restorer_banner_fox.png
+Banner pixel size=640x360
+Banner bytes=348094
+Banner SHA-256=F6C4CD01AF457C59A7BA3B2AC12A06032F793F21F1917C56CFC61FDF86890158
+Banner visual inspection=FOX present
+Alternative banner resources=absent
+Projectivy XS FOX display=PASS
 
-Automatic refresh call sites:
-ControlActivity.onCreate()
-ControlActivity.onResume()
-manual recovery onFinished callback
-manual recovery start/error path
-
-Static/reflection scenarios: PASS
-package missing, component missing, accessibility master disabled, exact token
-missing, optional missing, VPN disconnected and VPN state unavailable.
-
-Physical ControlActivity UI, Xiaomi Mi TV S75:
-button count=1
-button=ВОССТАНОВИТЬ СПЕЦВОЗМОЖНОСТИ
-old buttons count=0
-successful "найден" statuses count=0
-Bound text count=0
-
-Actual positive UI:
-WRITE_SECURE_SETTINGS=выдано
-Button Mapper=спецвозможности включены
-Projectivy Launcher=спецвозможности включены
-TorrServe=спецвозможности включены (optional)
-v2RayTun=VPN подключён (optional)
-core result=Система готова к работе.
-
-Screenshot=FOX-MiTV-Restorer-ControlActivity-1920x1080.png
-
-Restorer artwork audit
-----------------------
-
-Packaged image count=11:
-1 FOX banner PNG + 5 launcher-icon PNG + 5 identical round-icon PNG.
-Old restorer_banner.png entry count=0.
-Alternative banner/drawable-density/adaptive-icon aliases=0.
-
-ApplicationInfo.banner -> resource 0x7f010001
-ControlActivity.banner -> resource 0x7f010001
-resource -> @drawable/restorer_banner_fox
-packaged file -> res/drawable-nodpi-v4/restorer_banner_fox.png
-pixel size=640x360
-packaged bytes=348094
-SHA-256=F6C4CD01AF457C59A7BA3B2AC12A06032F793F21F1917C56CFC61FDF86890158
-Visual inspection=FOX present
-
-Projectivy XS source proof
---------------------------
-
-Projectivy package=com.spocky.projengmenu
-versionName=4.71
-versionCode=95
-
-Read-only decompile chain:
-defpackage.db3.f(ActivityInfo) -> ActivityInfo.getBannerResource()
-defpackage.db3.i/db3.k -> android.resource://package/resourceId
-defpackage.ib.r -> card image model
-defpackage.ss.l -> Glide request
-Glide cache directory ->
-/data/user/0/com.spocky.projengmenu/cache/image_manager_disk_cache
-
-v18 stale model key:
-android.resource://com.mitv.accessibilityrestorer/2130771968
-(resource ID 0x7f010000)
-
-v19 active model key:
-android.resource://com.mitv.accessibilityrestorer/2130771969
-(resource ID 0x7f010001)
-
-run-as com.spocky.projengmenu=unavailable (release APK not debuggable)
-No private cache file, database or preference was deleted.
-The old entry was invalidated by changing the model URI/resource ID and is no
-longer selected for Restorer.
-
-Projectivy restart performed:
-am force-stop com.spocky.projengmenu
-am start -n com.spocky.projengmenu/.ui.home.MainActivity
-
-Physical 1920x1080 XS result=FOX visible
-Screenshot=FOX-MiTV-Restorer-Projectivy-XS-1920x1080.png
-Before screenshot=FOX-MiTV-Restorer-Projectivy-XS-before.png
-pm clear com.spocky.projengmenu=NOT EXECUTED
-Projectivy reinstall=NOT EXECUTED
-
-INSTALL.cmd
+INSTALL.CMD
 -----------
 
 Encoding=UTF-8 without BOM
-Line endings=CRLF (903 CRLF, 0 bare LF)
-Content diff versus base ignoring EOL=none
-Synthetic HOME/input keyevent 3/sendevent=absent
+Line endings=CRLF
+Synthetic HOME injection=absent
+Windows cmd.exe execution=PASS
+WRITE_SECURE_SETTINGS grant/readback=PASS
+Button Mapper readiness=PASS
+Projectivy readiness=PASS
+ControlActivity launch=PASS
 
-Executed with Windows cmd.exe:
-cmd.exe /d /c "call INSTALL.cmd <nul"
-exit code=0
-same versionCode 19 correctly skipped
-WRITE_SECURE_SETTINGS=granted
-Core recovery after install=READY
-Button Mapper bound=YES
-Projectivy bound=YES
-Setup UI=opened
-cmd.exe execution=PASS
+PHYSICAL ACCEPTANCE
+-------------------
 
-Physical TV v19 readback
--------------------------
-
-ADB serial=192.168.1.52:5555
-adb install -r=Success
-versionCode=19 minSdk=21 targetSdk=28
-versionName=4.0.0
-WRITE_SECURE_SETTINGS granted=true
-stopped=false
-accessibility_enabled=1
-
-enabled_accessibility_services preserves the Xiaomi Voice and Karaoke strings
-in their existing form and includes exact Button Mapper, Projectivy and
-TorrServe tokens.
-
-Bound services=Button Mapper, Projectivy Launcher, TorrServe MatriX
-Binding services={}
-Crashed services={}
+Platform=Xiaomi Mi TV S75 / MiTV OS 2.8.1712 / Android 11
+ordinary reboot=PASS
+cold boot=PASS
+STR / Sleep -> Wake=PASS
+automatic bootstrap=PASS
+Button Mapper recovery=PASS
+Projectivy recovery=PASS
+TorrServe recovery=PASS
+v2RayTun / VPN=PASS
+physical HOME -> Projectivy=PASS
+Projectivy foreground=PASS
+Accessibility Binding services={}
+Accessibility Crashed services={}
 VPN=CONNECTED
 VPN interface=tun0
 
-Post-reboot v19 regression readback
------------------------------------
+SOURCE BUNDLE
+-------------
 
-Reboot was performed by the user and ADB was reconnected afterward.
-sys.boot_completed=1
-BOOT_COUNT=651 (previous completed boot count=650)
+File=FOX-MiTV-Restorer-4.0.0-sources.zip
+SHA-256=recorded in SHA256SUMS.txt
+Signing key/keystore included=false
+build cache included=false
+downloads included=false
 
-Automatic recovery log:
-MAIN DECISION=BOOT_PENDING
-EARLY_BOOT scheduled delay=2500 ms
-SESSION START versionName=4.0.0 versionCode=19 trigger=EARLY_BOOT
-SESSION FINISH success=true execution=COMPLETED durationMs=3179
-BOOT_COMPLETED received=true
-POST_BOOT_OPTIONAL_RECOVERY=started once for BOOT_COUNT 651
-TorrServe result=ALREADY_ENABLED
-V2RayVpnAssist final result=CONNECTED
-
-Post-reboot system state:
-WRITE_SECURE_SETTINGS granted=true
-stopped=false
-accessibility_enabled=1
-Bound services=Button Mapper, Projectivy Launcher, TorrServe MatriX
-Binding services={}
-Crashed services={}
-VPN=CONNECTED
-VPN interface=tun0
-Foreground=com.spocky.projengmenu/.ui.home.MainActivity
-
-Recovery logic changes: NONE
-
-Physical HOME: PENDING USER REMOTE-BUTTON VERIFICATION
-
-Publication
+PUBLICATION
 -----------
 
-Push NOT performed.
-GitHub Release NOT created or published.
+Repository=https://github.com/Dmtr4vpn/FOX-MiTV-Restorer
+Release=https://github.com/Dmtr4vpn/FOX-MiTV-Restorer/releases/tag/v4.0.0
+Release status=published

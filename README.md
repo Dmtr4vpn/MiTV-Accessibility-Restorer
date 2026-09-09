@@ -1,21 +1,23 @@
 # FOX MiTV Restorer
 
-Android TV-приложение для восстановления рабочего окружения Xiaomi Mi TV S75
-после холодной загрузки и пробуждения из сна (STR).
+Актуальная версия Android TV-приложения для восстановления рабочего окружения
+Xiaomi Mi TV после загрузки и пробуждения из сна.
 
+- Product: `FOX MiTV Restorer`
 - package: `com.mitv.accessibilityrestorer`
 - versionName: `4.0.0`
 - versionCode: `19`
 - minSdk: `21`
 - targetSdk: `28`
 - compileSdk: `35`
-- проверенная среда: Xiaomi Mi TV S75, MiTV OS 2.8.1712, Android 11
+- проверенная платформа: Xiaomi Mi TV S75, MiTV OS 2.8.1712, Android 11
 
-Package является частью Xiaomi compatibility contract и не меняется.
+Приложение ориентировано на особенности загрузки и STR в Xiaomi Mi TV.
+Совместимость со всеми устройствами Android TV не заявляется.
 
 ## Что восстанавливается
 
-Core-компоненты:
+Основные компоненты:
 
 - Button Mapper;
 - Projectivy Launcher.
@@ -25,33 +27,58 @@ Core-компоненты:
 - TorrServe;
 - v2RayTun.
 
-Отсутствие необязательного компонента не делает core recovery неуспешным.
-Restorer не меняет Android default HOME, не отключает Xiaomi launcher, не
-использует постоянный Service и не выполняет периодический мониторинг.
+Отсутствие TorrServe или v2RayTun не считается неисправностью основной части
+Restorer.
+
+При восстановлении приложение сохраняет все существующие записи в
+`Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES` без изменения их написания и
+добавляет только отсутствующие целевые службы. Затем устанавливается
+`Settings.Secure.ACCESSIBILITY_ENABLED=1`.
+
+## Автоматическая работа
+
+Cold boot:
+
+```text
+BLACK -> Projectivy
+```
+
+STR / Sleep -> Wake:
+
+```text
+#474747 -> Projectivy
+```
+
+Используются Direct Boot, `BOOT_COUNT`, одноразовые boot/fallback-триггеры и
+защита от повторного выполнения в одной загрузочной сессии. Постоянного Service,
+фонового мониторинга и повторяющихся alarm нет.
+
+После основного восстановления отдельно обрабатываются необязательные TorrServe
+и v2RayTun. Финальный пользовательский экран после автоматического восстановления
+- Projectivy Launcher.
 
 ## Экран состояния
 
-`ControlActivity` выполняет read-only проверку при `onCreate()`, `onResume()` и
-после обоих исходов ручного recovery. Экран показывает только состояния,
-которые APK может доказать обычными Android API:
+`ControlActivity` автоматически обновляет состояние при открытии, возврате на
+экран и после ручного восстановления. Проверяются:
 
 - фактический grant `WRITE_SECURE_SETTINGS`;
 - `Settings.Secure.ACCESSIBILITY_ENABLED`;
-- наличие package и AccessibilityService Button Mapper и Projectivy;
-- точное присутствие их service tokens в
-  `ENABLED_ACCESSIBILITY_SERVICES`;
-- такое же состояние optional TorrServe;
-- текущее наличие VPN transport через `ConnectivityManager` для v2RayTun.
+- package, AccessibilityService и точный enabled-token Button Mapper;
+- package, AccessibilityService и точный enabled-token Projectivy Launcher;
+- такое же состояние необязательного TorrServe;
+- текущий VPN transport через `ConnectivityManager` для v2RayTun.
 
-Экран не заявляет `Bound`: обычный APK не может достоверно получить этот статус.
-Bound проверяется отдельно через ADB `dumpsys accessibility`.
+UI не заявляет статус Bound, потому что обычный APK не может достоверно получить
+его через публичный Android API. Для этого используется отдельная ADB-проверка
+`dumpsys accessibility`.
 
-Есть одна action-кнопка: `Восстановить спецвозможности`. Она использует
-существующий manual recovery. Для выхода используется физическая HOME.
+На экране одна кнопка: `Восстановить спецвозможности`. Для выхода используется
+физическая кнопка HOME на пульте.
 
 ## Установка
 
-Рекомендуемая структура:
+Рекомендуемая структура Windows-комплекта:
 
 ```text
 ADBAppControl-1.8.6\
@@ -61,21 +88,12 @@ ADBAppControl-1.8.6\
   install\другие-приложения.apk
 ```
 
-`INSTALL.cmd` перебирает APK, сравнивает `versionCode`, выдаёт и проверяет
-`WRITE_SECURE_SETTINGS`, запускает recovery bootstrap и ждёт READY.
+`INSTALL.cmd` обрабатывает все APK из `install`, сравнивает `versionCode`, при
+необходимости устанавливает или обновляет приложение, выдаёт и проверяет
+`WRITE_SECURE_SETTINGS`, запускает recovery bootstrap и открывает
+`ControlActivity` после успешной проверки.
 
-READY означает пять условий два polling cycle подряд:
-
-1. Button Mapper находится в `enabled_accessibility_services`.
-2. Projectivy находится в `enabled_accessibility_services`.
-3. Button Mapper находится в `Bound services`.
-4. Projectivy находится в `Bound services`.
-5. Projectivy home находится в foreground.
-
-Интервал равен `1000 ms`, timeout равен 30 секундам. Синтетическая HOME через
-ADB не используется. Физическую HOME пользователь проверяет кнопкой пульта.
-
-Ручное обновление v18 до v19:
+Ручная установка или обновление:
 
 ```text
 adb install -r FOX-MiTV-Restorer-4.0.0.apk
@@ -83,7 +101,10 @@ adb shell pm grant com.mitv.accessibilityrestorer android.permission.WRITE_SECUR
 adb shell am start -n com.mitv.accessibilityrestorer/.ControlActivity
 ```
 
-## Routing
+После установки один раз проверьте физическую кнопку HOME. Ожидаемый результат:
+Projectivy Launcher. Синтетическая HOME через ADB не используется.
+
+## Android TV routing
 
 ```text
 MAIN + LAUNCHER          -> com.mitv.accessibilityrestorer/.MainActivity
@@ -91,55 +112,45 @@ MAIN + LEANBACK_LAUNCHER -> com.mitv.accessibilityrestorer/.ControlActivity
 MAIN + INFO              -> NO MATCH
 ```
 
-`MainActivity` остаётся recovery-only bootstrap и не запускает ControlActivity.
+`MainActivity` является только recovery bootstrap. Пользовательская карточка
+Android TV открывает `ControlActivity`.
 
-## Projectivy XS artwork
+## Графика
 
-Projectivy 4.71 получает карточку приложения через
-`ActivityInfo.getBannerResource()`, строит URI
-`android.resource://<package>/<resourceId>` и загружает его через Glide.
+- системная иконка: `@mipmap/ic_launcher`;
+- круглая иконка: `@mipmap/ic_launcher_round`;
+- Android TV banner: `@drawable/restorer_banner_fox`;
+- banner в APK: PNG, `640x360`, с надписью FOX.
 
-В v18 FOX banner был единственным banner в APK, но снова получил исторический
-resource ID `0x7f010000`. Projectivy использовал bitmap, сохранённый для старого
-URI-ключа этого же package. В v19 тот же утверждённый FOX bitmap имеет новое имя
-`@drawable/restorer_banner_fox` и ID `0x7f010001`. Старый cache key больше не
-используется. После обычного `force-stop/start` Projectivy реальная XS-карточка
-на ТВ показывает FOX.
+Отображение FOX в XS-карточке Projectivy физически проверено на телевизоре.
 
-`pm clear com.spocky.projengmenu` не выполнялся. Layout, favorites и остальные
-настройки Projectivy не очищались.
+## Разрешения и ограничения
 
-## Recovery freeze
+Manifest содержит:
 
-По сравнению с base commit `8e0f3d77a4aa7c1d16a75a4024345efe4b5dad8b`
-recovery logic changes: **NONE**.
+- `android.permission.RECEIVE_BOOT_COMPLETED`;
+- `android.permission.WRITE_SECURE_SETTINGS`;
+- `android.permission.ACCESS_NETWORK_STATE`.
 
-Не изменены Direct Boot, `BOOT_COUNT`, EARLY_BOOT, BOOT_FALLBACK, STR timings,
-`ALL_INITIAL -> BASE -> MAPPER -> ALL_FINAL`, Projectivy final launch, Button
-Mapper, TorrServe, V2RayVpnAssist, `start_3rd_app` read-only handling,
-RecoveryCover `#474747` и чёрная cold-boot trampoline.
-
-## Разрешения
-
-- `android.permission.RECEIVE_BOOT_COMPLETED`
-- `android.permission.WRITE_SECURE_SETTINGS`
-- `android.permission.ACCESS_NETWORK_STATE`
-
-Нет `INTERNET`, `WRITE_SETTINGS`, `WAKE_LOCK`, Android Service/ForegroundService,
-WorkManager, JobScheduler и repeating alarm.
+В приложении нет `INTERNET`, `WRITE_SETTINGS`, `WAKE_LOCK`, собственного
+AccessibilityService, постоянного Service/ForegroundService, WorkManager,
+JobScheduler и повторяющихся alarm.
 
 ## Сборка
 
-Используется официальный toolchain: `aapt2`, `javac`, D8, `zipalign`,
-`apksigner`. Signing key не включён в source ZIP.
+Используется официальный Android toolchain: `aapt2`, `javac`, D8, `zipalign`,
+`apksigner`. Signing key не хранится в репозитории и не включён в source bundle.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 `
   -JavaHome '<jdk17>' `
   -AndroidSdkRoot '<android-sdk>' `
-  -Keystore '<existing-restorer-keystore>' `
+  -Keystore '<restorer-keystore>' `
   -KeystorePassword '<password>' `
   -KeyAlias '<alias>'
 ```
 
-Push и GitHub Release для v19 не выполняются.
+## Публикация
+
+- Repository: https://github.com/Dmtr4vpn/FOX-MiTV-Restorer
+- Release: https://github.com/Dmtr4vpn/FOX-MiTV-Restorer/releases/tag/v4.0.0

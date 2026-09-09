@@ -1,50 +1,45 @@
-# FOX MiTV Restorer 4.0.0, versionCode 19
+# FOX MiTV Restorer 4.0.0
 
-Локальная тестовая сборка для Xiaomi Mi TV S75, MiTV OS 2.8.1712, Android 11.
+Финальная версия для Xiaomi Mi TV S75, MiTV OS 2.8.1712, Android 11.
 
-## Изменено
+- Package: `com.mitv.accessibilityrestorer`
+- versionName: `4.0.0`
+- versionCode: `19`
 
-- Экран состояния больше не использует успешное состояние `найден`.
-- Проверяется фактический grant `WRITE_SECURE_SETTINGS`.
-- Проверяется `Settings.Secure.ACCESSIBILITY_ENABLED`.
-- Для Button Mapper, Projectivy и TorrServe проверяются package, component и
-  точный token в `ENABLED_ACCESSIBILITY_SERVICES`.
-- Для v2RayTun показывается текущий VPN transport из `ConnectivityManager`, а не
-  сохранённый результат recovery session.
-- Optional TorrServe/v2RayTun не влияют на core readiness.
-- UI не заявляет Bound; Bound остаётся отдельной ADB acceptance-проверкой.
+## Возможности
 
-## Projectivy XS
+- автоматическое восстановление после cold boot и Sleep/Wake (STR);
+- восстановление Button Mapper и Projectivy Launcher;
+- сохранение всех существующих Accessibility-служб без изменения их строк;
+- необязательное восстановление TorrServe;
+- необязательное восстановление v2RayTun и текущего VPN-соединения;
+- финальный запуск Projectivy Launcher;
+- компактный экран фактического состояния разрешения, Accessibility и VPN;
+- одна кнопка `Восстановить спецвозможности`;
+- системная иконка и Android TV banner в оформлении FOX;
+- корректное отображение FOX в XS-карточке Projectivy;
+- Windows-установщик с обработкой APK по `versionCode` и автоматической выдачей
+  `WRITE_SECURE_SETTINGS`.
 
-В APK v18 старого artwork не было: единственный banner уже содержал FOX. Причина
-оказалась в повторном Glide URI-ключе Projectivy:
+Основные компоненты: Button Mapper и Projectivy Launcher.
 
-```text
-android.resource://com.mitv.accessibilityrestorer/0x7f010000
-```
+TorrServe и v2RayTun являются необязательными. Их отсутствие не считается
+ошибкой основной части Restorer.
 
-В v19 утверждённый bitmap не изменён, но активный banner имеет новое имя
-`@drawable/restorer_banner_fox` и новый ID `0x7f010001`. После безопасного
-`force-stop/start` Projectivy реальная XS-карточка на телевизоре показывает FOX.
+## Проверено на телевизоре
 
-`pm clear com.spocky.projengmenu` не выполнялся. Настройки Projectivy не
-очищались.
+- ordinary reboot: PASS;
+- cold boot: PASS;
+- STR / Sleep -> Wake: PASS;
+- Button Mapper recovery: PASS;
+- Projectivy recovery: PASS;
+- TorrServe recovery: PASS;
+- v2RayTun / VPN: PASS;
+- physical HOME -> Projectivy: PASS;
+- Projectivy XS FOX artwork: PASS;
+- INSTALL.cmd execution: PASS.
 
-## Не изменено
+## Ограничения
 
-- package `com.mitv.accessibilityrestorer`;
-- versionName `4.0.0`;
-- cold boot и STR recovery;
-- все recovery timings и sequence;
-- RecoveryCover `#474747`;
-- Button Mapper, Projectivy, TorrServe и V2RayVpnAssist logic;
-- `start_3rd_app` read-only/advisory;
-- routing и permissions;
-- одна кнопка `Восстановить спецвозможности`.
-
-Recovery logic changes: **NONE**.
-
-`INSTALL.cmd` содержательно не изменён. Файл нормализован в UTF-8 без BOM с
-Windows CRLF и реально проверен через `cmd.exe /d /c "call INSTALL.cmd <nul"`.
-
-Push и GitHub Release не выполнялись.
+Приложение ориентировано на Xiaomi Mi TV и особенности их загрузки/STR.
+Универсальная совместимость со всеми Android TV не заявляется.

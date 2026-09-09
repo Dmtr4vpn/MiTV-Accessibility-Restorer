@@ -14,7 +14,6 @@ set "ACCESSIBILITY_OUTPUT=%TEMP%\mitv-accessibility-%RANDOM%-%RANDOM%.tmp"
 set "BOUND_STATUS_OUTPUT=%TEMP%\mitv-bound-status-%RANDOM%-%RANDOM%.tmp"
 set "WINDOW_OUTPUT=%TEMP%\mitv-window-%RANDOM%-%RANDOM%.tmp"
 set "RESTORER_PACKAGE=com.mitv.accessibilityrestorer"
-set "LEGACY_RESTORER_PACKAGE=foxmitv.restorer"
 
 set /a APK_TOTAL=0
 set /a APK_INDEX=0
@@ -29,7 +28,6 @@ set "PERMISSION_STATUS=not checked"
 set "CORE_RECOVERY_STATUS=not checked"
 set "MAPPER_BOUND=NO"
 set "PROJECTIVY_BOUND=NO"
-set "LEGACY_RESTORER_STATUS=not checked"
 set "SETUP_STATUS=not opened"
 set /a POST_INSTALL_FAILED=0
 set "FATAL_ERROR="
@@ -324,38 +322,6 @@ for /f "tokens=2 delims==" %%V in ('findstr /R /C:"versionCode=[0-9][0-9]*" "%TE
 if not defined INSTALLED_VERSION_CODE exit /b 1
 exit /b 0
 
-:remove_legacy_restorer
->>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! shell pm path %LEGACY_RESTORER_PACKAGE%
-"%ADB%" -s "!DEVICE_SERIAL!" shell pm path %LEGACY_RESTORER_PACKAGE% >"%TEMP_OUTPUT%" 2>&1
-findstr /B /C:"package:" "%TEMP_OUTPUT%" >nul
-if errorlevel 1 (
-    set "LEGACY_RESTORER_STATUS=not installed"
-    >>"%LOG_FILE%" echo Legacy Restorer package: not installed
-    exit /b 0
-)
-
-echo     Удаление старого Restorer %LEGACY_RESTORER_PACKAGE%...
->>"%LOG_FILE%" echo COMMAND: adb -s !DEVICE_SERIAL! uninstall %LEGACY_RESTORER_PACKAGE%
-"%ADB%" -s "!DEVICE_SERIAL!" uninstall %LEGACY_RESTORER_PACKAGE% >"%TEMP_OUTPUT%" 2>&1
-set "LEGACY_UNINSTALL_RESULT=!ERRORLEVEL!"
-type "%TEMP_OUTPUT%" >>"%LOG_FILE%"
-if not "!LEGACY_UNINSTALL_RESULT!"=="0" (
-    set "LEGACY_RESTORER_STATUS=uninstall failed"
-    >>"%LOG_FILE%" echo ERROR: Legacy Restorer uninstall failed.
-    exit /b 1
-)
-
-"%ADB%" -s "!DEVICE_SERIAL!" shell pm path %LEGACY_RESTORER_PACKAGE% >"%TEMP_OUTPUT%" 2>&1
-findstr /B /C:"package:" "%TEMP_OUTPUT%" >nul
-if not errorlevel 1 (
-    set "LEGACY_RESTORER_STATUS=still installed"
-    >>"%LOG_FILE%" echo ERROR: Legacy Restorer is still installed after uninstall.
-    exit /b 1
-)
-set "LEGACY_RESTORER_STATUS=removed"
->>"%LOG_FILE%" echo Legacy Restorer package: removed successfully
-exit /b 0
-
 :install_apk
 set /a APK_INDEX+=1
 set "APK_NAME=%~1"
@@ -373,16 +339,6 @@ if errorlevel 1 (
 )
 >>"%LOG_FILE%" echo Package: !APK_PACKAGE!
 >>"%LOG_FILE%" echo APK versionCode: !APK_VERSION_CODE!
-
-if /I "!APK_PACKAGE!"=="%RESTORER_PACKAGE%" (
-    call :remove_legacy_restorer
-    if errorlevel 1 (
-        set /a APK_FAILED+=1
-        echo     Ошибка: старый Restorer не удалён; новый пакет не устанавливается.
-        >>"%LOG_FILE%" echo RESULT: FAILED_TO_REMOVE_LEGACY_RESTORER
-        exit /b 0
-    )
-)
 
 call :get_installed_version
 if errorlevel 1 (
@@ -691,7 +647,6 @@ echo WRITE_SECURE_SETTINGS:         !PERMISSION_STATUS!
 echo Core recovery after install:   !CORE_RECOVERY_STATUS!
 echo Button Mapper bound:           !MAPPER_BOUND!
 echo Projectivy bound:              !PROJECTIVY_BOUND!
-echo Старый Restorer:                !LEGACY_RESTORER_STATUS!
 echo Физическая HOME:                проверьте кнопкой пульта
 echo Setup UI:                      !SETUP_STATUS!
 if /I "!CORE_RECOVERY_STATUS!"=="READY" (
@@ -716,7 +671,6 @@ echo ============================================================
 >>"%LOG_FILE%" echo Core recovery after install: !CORE_RECOVERY_STATUS!
 >>"%LOG_FILE%" echo Button Mapper bound: !MAPPER_BOUND!
 >>"%LOG_FILE%" echo Projectivy bound: !PROJECTIVY_BOUND!
->>"%LOG_FILE%" echo Legacy Restorer: !LEGACY_RESTORER_STATUS!
 >>"%LOG_FILE%" echo Physical HOME: requires remote-button verification
 >>"%LOG_FILE%" echo Setup UI: !SETUP_STATUS!
 if /I "!CORE_RECOVERY_STATUS!"=="READY" (
